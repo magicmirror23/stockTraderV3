@@ -1,0 +1,180 @@
+@use '../../../variables' as *;
+
+.symbol-search {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+
+  &__input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__icon {
+    position: absolute;
+    left: 0.625rem;
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+    pointer-events: none;
+  }
+
+  &__input {
+    width: 100%;
+    padding: 0.375rem 2rem 0.375rem 1.875rem;
+    font-size: 0.8125rem;
+    font-family: inherit;
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: $border-radius;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &::placeholder {
+      color: var(--color-text-secondary);
+      opacity: 0.7;
+    }
+
+    &:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px rgba($primary, 0.12);
+    }
+  }
+
+  &__clear {
+    position: absolute;
+    right: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    color: var(--color-text-secondary);
+    font-size: 0.6875rem;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.15s ease;
+
+    &:hover {
+      background: var(--color-surface-hover);
+    }
+  }
+
+  &__spinner {
+    position: absolute;
+    right: 0.5rem;
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  // ── Dropdown ──
+
+  &__dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    max-height: 360px;
+    overflow-y: auto;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: $border-radius;
+    box-shadow: $box-shadow-lg;
+  }
+
+  &__empty {
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    text-align: center;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: background 0.1s ease;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    &--active {
+      background: var(--color-primary-light);
+    }
+
+    &:hover {
+      background: var(--color-surface-hover);
+    }
+
+    &--active:hover {
+      background: var(--color-primary-light);
+    }
+  }
+
+  &__item-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  &__item-right {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+
+  &__symbol {
+    font-family: $font-family-monospace;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text);
+    white-space: nowrap;
+  }
+
+  &__type {
+    font-size: 0.625rem;
+    font-weight: 600;
+    padding: 0.0625rem 0.3125rem;
+    border-radius: 2px;
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+  }
+
+  &__name {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__exchange {
+    font-size: 0.625rem;
+    color: var(--color-text-secondary);
+    opacity: 0.7;
+    white-space: nowrap;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

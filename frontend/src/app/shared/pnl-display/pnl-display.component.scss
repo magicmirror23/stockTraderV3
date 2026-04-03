@@ -1,0 +1,36 @@
+@use '../../../variables' as *;
+
+:host {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.pnl-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--bs-secondary-color);
+}
+
+.pnl-value {
+  font-weight: 700;
+
+  &.pnl--positive { color: $color-buy; }
+  &.pnl--negative { color: $color-sell; }
+  &.pnl--neutral  { color: $color-hold; }
+
+  &.pnl--sm { font-size: 0.8125rem; }
+  &.pnl--md { font-size: 1rem; }
+  &.pnl--lg { font-size: 1.375rem; }
+
+  &.pnl--pill {
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+
+    &.pnl--positive { background: rgba($color-buy, 0.1); }
+    &.pnl--negative { background: rgba($color-sell, 0.1); }
+    &.pnl--neutral  { background: rgba($color-hold, 0.1); }
+  }
+}

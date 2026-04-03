@@ -1,0 +1,54 @@
+@use '../../../variables' as *;
+
+.price-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+
+  &--inline {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  &__price {
+    font-weight: 700;
+    color: var(--bs-body-color);
+  }
+
+  &__change {
+    font-weight: 600;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.2rem;
+  }
+
+  &__arrow {
+    font-size: 0.6em;
+  }
+
+  &__pct {
+    opacity: 0.85;
+  }
+
+  // ------ Direction colors ------
+  .price--up   { color: $color-buy; }
+  .price--down { color: $color-sell; }
+  .price--flat { color: $color-hold; }
+
+  // ------ Sizes ------
+  &--sm {
+    .price-display__price  { font-size: 0.875rem; }
+    .price-display__change { font-size: 0.7rem; }
+  }
+
+  &--md {
+    .price-display__price  { font-size: 1.25rem; }
+    .price-display__change { font-size: 0.8rem; }
+  }
+
+  &--lg {
+    .price-display__price  { font-size: 1.75rem; }
+    .price-display__change { font-size: 0.9rem; }
+  }
+}

@@ -1,0 +1,65 @@
+@use '../../../variables' as *;
+
+.ticker-tape {
+  overflow: hidden;
+  background: $card-bg;
+  border-bottom: 1px solid $border-color;
+  padding: 0.375rem 0;
+  white-space: nowrap;
+  user-select: none;
+
+  &--pause:hover .ticker-tape__track {
+    animation-play-state: paused;
+  }
+
+  &__track {
+    display: inline-flex;
+    animation: ticker-scroll linear infinite;
+    will-change: transform;
+  }
+
+  &__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.2rem 1.25rem;
+    font-size: 0.8125rem;
+    border-right: 1px solid rgba($border-color, 0.5);
+    line-height: 1;
+
+    &:last-child {
+      border-right: none;
+    }
+
+    &--up {
+      .ticker-tape__change { color: $color-buy; }
+    }
+    &--down {
+      .ticker-tape__change { color: $color-sell; }
+    }
+    &--flat {
+      .ticker-tape__change { color: $color-hold; }
+    }
+  }
+
+  &__symbol {
+    font-weight: 600;
+    color: $body-color;
+    letter-spacing: 0.2px;
+  }
+
+  &__price {
+    color: $body-color;
+    font-weight: 500;
+  }
+
+  &__change {
+    font-weight: 600;
+    font-size: 0.75rem;
+  }
+}
+
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}

@@ -1,0 +1,190 @@
+<form class="order-form" [formGroup]="form" (ngSubmit)="onSubmit()">
+  <!-- Symbol (hidden if pre-set, shown otherwise) -->
+  @if (!config.symbol) {
+    <div class="order-form__field">
+      <label class="order-form__label">Symbol</label>
+      <input
+        type="text"
+        class="order-form__input"
+        formControlName="symbol"
+        placeholder="e.g. RELIANCE"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      @if (hasError('symbol', 'required')) {
+        <span class="order-form__error">Symbol is required</span>
+      }
+    </div>
+  }
+
+  <!-- Buy / Sell Toggle -->
+  <div class="order-form__side-toggle">
+    <button
+      type="button"
+      class="order-form__side-btn order-form__side-btn--buy"
+      [class.order-form__side-btn--active]="side === 'buy'"
+      (click)="toggleSide('buy')"
+      [disabled]="disabled"
+    >
+      <i class="bi bi-arrow-up-circle"></i> BUY
+    </button>
+    <button
+      type="button"
+      class="order-form__side-btn order-form__side-btn--sell"
+      [class.order-form__side-btn--active]="side === 'sell'"
+      (click)="toggleSide('sell')"
+      [disabled]="disabled"
+    >
+      <i class="bi bi-arrow-down-circle"></i> SELL
+    </button>
+  </div>
+
+  <!-- Order Type -->
+  <div class="order-form__field">
+    <label class="order-form__label">Order Type</label>
+    <div class="order-form__type-group">
+      @for (type of orderTypes; track type) {
+        <button
+          type="button"
+          class="order-form__type-btn"
+          [class.order-form__type-btn--active]="orderType === type"
+          (click)="form.patchValue({ orderType: type })"
+          [disabled]="disabled"
+        >
+          {{ type | uppercase }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Quantity -->
+  <div class="order-form__field">
+    <label class="order-form__label">
+      Quantity
+      @if (config.lotSize && config.lotSize > 1) {
+        <span class="order-form__hint">(lot size: {{ config.lotSize }})</span>
+      }
+    </label>
+    <div class="order-form__qty-wrap">
+      <button
+        type="button"
+        class="order-form__qty-btn"
+        (click)="decrementQty()"
+        [disabled]="disabled"
+        aria-label="Decrease quantity"
+      >−</button>
+      <input
+        type="number"
+        class="order-form__input order-form__input--qty"
+        formControlName="quantity"
+        [step]="lotSize"
+        [min]="lotSize"
+        [attr.max]="config.maxQuantity ?? null"
+      />
+      <button
+        type="button"
+        class="order-form__qty-btn"
+        (click)="incrementQty()"
+        [disabled]="disabled"
+        aria-label="Increase quantity"
+      >+</button>
+    </div>
+    @if (hasError('quantity', 'required')) {
+      <span class="order-form__error">Quantity is required</span>
+    }
+    @if (hasError('quantity', 'min')) {
+      <span class="order-form__error">Minimum quantity is {{ lotSize }}</span>
+    }
+    @if (hasError('quantity', 'max')) {
+      <span class="order-form__error">Maximum quantity is {{ config.maxQuantity }}</span>
+    }
+  </div>
+
+  <!-- Price (Limit / Stop-Limit) -->
+  @if (showPrice) {
+    <div class="order-form__field">
+      <label class="order-form__label">Price</label>
+      <input
+        type="number"
+        class="order-form__input"
+        formControlName="price"
+        [step]="tickSize"
+        placeholder="0.00"
+      />
+      @if (hasError('price', 'required')) {
+        <span class="order-form__error">Price is required for {{ orderType }} orders</span>
+      }
+      @if (hasError('price', 'min')) {
+        <span class="order-form__error">Price must be positive</span>
+      }
+    </div>
+  }
+
+  <!-- Trigger Price (Stop / Stop-Limit) -->
+  @if (showTriggerPrice) {
+    <div class="order-form__field">
+      <label class="order-form__label">Trigger Price</label>
+      <input
+        type="number"
+        class="order-form__input"
+        formControlName="triggerPrice"
+        [step]="tickSize"
+        placeholder="0.00"
+      />
+      @if (hasError('triggerPrice', 'required')) {
+        <span class="order-form__error">Trigger price is required for {{ orderType }} orders</span>
+      }
+      @if (hasError('triggerPrice', 'min')) {
+        <span class="order-form__error">Trigger price must be positive</span>
+      }
+    </div>
+  }
+
+  <!-- Product Type -->
+  <div class="order-form__field">
+    <label class="order-form__label">Product</label>
+    <div class="order-form__type-group">
+      @for (pt of productTypes; track pt) {
+        <button
+          type="button"
+          class="order-form__type-btn"
+          [class.order-form__type-btn--active]="form.get('productType')?.value === pt"
+          (click)="form.patchValue({ productType: pt })"
+          [disabled]="disabled"
+        >
+          {{ pt }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Estimated Value -->
+  @if (estimatedValue > 0) {
+    <div class="order-form__estimate">
+      <span class="order-form__estimate-label">Est. Value</span>
+      <span class="order-form__estimate-value">₹{{ estimatedValue | number:'1.2-2' }}</span>
+    </div>
+  }
+
+  <!-- Risk Warning -->
+  <div class="order-form__risk-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    <span>Trading involves risk. Verify order details before submitting.</span>
+  </div>
+
+  <!-- Submit -->
+  <button
+    type="submit"
+    class="order-form__submit"
+    [ngClass]="{
+      'order-form__submit--buy': side === 'buy',
+      'order-form__submit--sell': side === 'sell'
+    }"
+    [disabled]="form.invalid || loading || disabled"
+  >
+    @if (loading) {
+      <span class="order-form__submit-spinner"></span>
+    }
+    {{ side === 'buy' ? 'PLACE BUY ORDER' : 'PLACE SELL ORDER' }}
+  </button>
+</form>

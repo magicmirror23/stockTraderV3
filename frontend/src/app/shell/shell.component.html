@@ -1,0 +1,38 @@
+<!-- Shell body: sidebar + content -->
+<div class="shell-body">
+  <!-- Sidebar -->
+  <div class="shell-sidebar"
+       [class.sidebar-collapsed]="sidebarCollapsed"
+       [class.sidebar-mobile-open]="mobileMenuOpen">
+    <app-sidebar
+      [collapsed]="sidebarCollapsed"
+      [mobileOpen]="mobileMenuOpen"
+      (collapsedChange)="sidebarCollapsed = $event"
+      (mobileClose)="mobileMenuOpen = false">
+    </app-sidebar>
+  </div>
+
+  <!-- Mobile backdrop -->
+  @if (mobileMenuOpen) {
+    <div class="shell-backdrop" (click)="mobileMenuOpen = false"></div>
+  }
+
+  <!-- Content column -->
+  <div class="shell-content">
+    <app-topbar
+      (menuToggle)="mobileMenuOpen = !mobileMenuOpen"
+      (quickTrade)="onQuickTrade()"
+      (refresh)="onRefresh()">
+    </app-topbar>
+
+    <main class="shell-page">
+      <router-outlet />
+    </main>
+
+    <app-footer
+      [marketPhase]="marketPhase"
+      [connected]="wsConnected"
+      [apiStatus]="apiStatus">
+    </app-footer>
+  </div>
+</div>

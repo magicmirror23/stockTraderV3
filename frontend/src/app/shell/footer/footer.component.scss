@@ -1,0 +1,57 @@
+@use '../../../variables' as *;
+
+$footer-height: 28px;
+
+:host {
+  display: flex;
+  align-items: center;
+  height: $footer-height;
+  padding: 0 1rem;
+  background: #fafbfc;
+  border-top: 1px solid $border-color;
+  font-size: 0.7rem;
+  color: #78909c;
+  gap: 1rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.footer-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+
+  &.dot-ok      { background: $success; }
+  &.dot-warn    { background: $warning; }
+  &.dot-error   { background: $danger; }
+  &.dot-offline { background: #bdbdbd; }
+}
+
+.footer-spacer {
+  flex: 1;
+}
+
+.footer-clock {
+  font-family: $font-family-monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.3px;
+}
+
+.footer-divider {
+  width: 1px;
+  height: 14px;
+  background: $border-color;
+}
+
+@media (max-width: 575.98px) {
+  .footer-hide-xs {
+    display: none;
+  }
+}

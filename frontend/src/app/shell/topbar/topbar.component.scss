@@ -1,0 +1,244 @@
+@use '../../../variables' as *;
+
+$topbar-height: 48px;
+
+:host {
+  display: flex;
+  align-items: center;
+  height: $topbar-height;
+  padding: 0 1rem;
+  background: $card-bg;
+  border-bottom: 1px solid $border-color;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+// ── Mobile hamburger ──
+.topbar-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: $border-radius-sm;
+  background: transparent;
+  color: $body-color;
+  font-size: 1.25rem;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba($primary, 0.06);
+  }
+
+  @media (max-width: 991.98px) {
+    display: flex;
+  }
+}
+
+// ── Symbol search ──
+.topbar-search {
+  position: relative;
+  flex: 0 1 320px;
+
+  .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9e9e9e;
+    font-size: 0.85rem;
+    pointer-events: none;
+  }
+
+  input {
+    width: 100%;
+    height: 32px;
+    padding: 0 0.75rem 0 2rem;
+    border: 1px solid $border-color;
+    border-radius: $border-radius;
+    background: $body-bg;
+    font-size: 0.8125rem;
+    color: $body-color;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &::placeholder {
+      color: #b0b0b0;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary;
+      box-shadow: 0 0 0 2px rgba($primary, 0.12);
+    }
+  }
+
+  // hide on very small screens
+  @media (max-width: 575.98px) {
+    display: none;
+  }
+}
+
+// ── Spacer ──
+.topbar-spacer {
+  flex: 1;
+}
+
+// ── Quick actions row ──
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-sm;
+  background: transparent;
+  color: $secondary;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+
+  i { font-size: 0.85rem; }
+
+  &:hover {
+    background: rgba($primary, 0.05);
+    border-color: rgba($primary, 0.25);
+    color: $primary;
+  }
+
+  &.action-danger:hover {
+    background: rgba($danger, 0.06);
+    border-color: rgba($danger, 0.25);
+    color: $danger;
+  }
+
+  // hide labels on medium screens
+  @media (max-width: 767.98px) {
+    .action-label { display: none; }
+    padding: 0.3rem;
+  }
+}
+
+// ── Market session badge ──
+.market-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  &.market-open {
+    background: rgba($success, 0.1);
+    color: $success;
+    .badge-dot { background: $success; }
+  }
+
+  &.market-closed {
+    background: rgba(#9e9e9e, 0.12);
+    color: #757575;
+    .badge-dot { background: #9e9e9e; }
+  }
+
+  &.market-pre {
+    background: rgba($warning, 0.1);
+    color: $warning;
+    .badge-dot { background: $warning; }
+  }
+
+  @media (max-width: 575.98px) {
+    .badge-label { display: none; }
+  }
+}
+
+// ── Notification bell ──
+.topbar-bell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: $border-radius-sm;
+  background: transparent;
+  color: $secondary;
+  font-size: 1rem;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba($primary, 0.06);
+    color: $primary;
+  }
+
+  .bell-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: $danger;
+    border: 1.5px solid $card-bg;
+  }
+}
+
+// ── Account area ──
+.topbar-account {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: $border-radius-sm;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba($primary, 0.05);
+  }
+
+  .account-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, $primary, darken($primary, 12%));
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+
+  .account-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: $body-color;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 767.98px) {
+    .account-name { display: none; }
+  }
+}

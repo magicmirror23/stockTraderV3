@@ -1,0 +1,10 @@
+.sparkline {
+  display: inline-block;
+  overflow: hidden;
+  line-height: 0;
+
+  // Suppress lightweight-charts internal scrollbars at tiny sizes
+  :host ::ng-deep .tv-lightweight-charts {
+    overflow: hidden !important;
+  }
+}

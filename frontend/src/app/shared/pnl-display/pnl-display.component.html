@@ -1,0 +1,8 @@
+@if (label) {
+  <span class="pnl-label">{{ label }}</span>
+}
+<span
+  class="pnl-value text-mono"
+  [ngClass]="[sentimentClass, 'pnl--' + size, pill ? 'pnl--pill' : '']">
+  {{ prefix }}{{ value | number:format }}
+</span>

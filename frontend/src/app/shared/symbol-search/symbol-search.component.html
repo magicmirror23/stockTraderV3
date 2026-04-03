@@ -1,0 +1,60 @@
+<div class="symbol-search" (appClickOutside)="close()">
+  <div class="symbol-search__input-wrap">
+    <i class="bi bi-search symbol-search__icon"></i>
+    <input
+      #searchInput
+      type="text"
+      class="symbol-search__input"
+      [placeholder]="placeholder"
+      [(ngModel)]="query"
+      (input)="onInput()"
+      (keydown)="onKeyDown($event)"
+      (focus)="open()"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    @if (query) {
+      <button class="symbol-search__clear" (click)="clear()" type="button" aria-label="Clear">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    }
+    @if (loading) {
+      <span class="symbol-search__spinner"></span>
+    }
+  </div>
+
+  @if (isOpen) {
+    <div class="symbol-search__dropdown" role="listbox">
+      @if (results.length === 0 && !loading) {
+        <div class="symbol-search__empty">
+          @if (query.length > 0) {
+            <span>No symbols found</span>
+          }
+        </div>
+      }
+      @for (item of results; track trackBySymbol($index, item)) {
+        <div
+          class="symbol-search__item"
+          role="option"
+          [class.symbol-search__item--active]="$index === activeIndex"
+          [attr.aria-selected]="$index === activeIndex"
+          (mouseenter)="activeIndex = $index"
+          (click)="select(item)"
+        >
+          <div class="symbol-search__item-left">
+            <span class="symbol-search__symbol">{{ item.symbol }}</span>
+            @if (item.type) {
+              <span class="symbol-search__type">{{ item.type }}</span>
+            }
+          </div>
+          <div class="symbol-search__item-right">
+            <span class="symbol-search__name">{{ item.name }}</span>
+            @if (item.exchange) {
+              <span class="symbol-search__exchange">{{ item.exchange }}</span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -1,0 +1,19 @@
+<div class="empty-state" [class.empty-state--compact]="compact">
+  <i class="bi empty-state__icon" [ngClass]="'bi-' + icon"></i>
+  <h6 class="empty-state__title">{{ title }}</h6>
+  @if (message) {
+    <p class="empty-state__message">{{ message }}</p>
+  }
+  @if (actionLabel) {
+    <button
+      type="button"
+      class="btn empty-state__action"
+      [ngClass]="'btn-' + actionVariant"
+      (click)="onAction()">
+      @if (actionIcon) {
+        <i class="bi" [ngClass]="'bi-' + actionIcon"></i>
+      }
+      {{ actionLabel }}
+    </button>
+  }
+</div>

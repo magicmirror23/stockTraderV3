@@ -1,0 +1,73 @@
+{
+  "models": [
+    {
+      "version": "v20260403.070510",
+      "timestamp": "2026-04-03T07:05:11.781819Z",
+      "seed": 42,
+      "horizon": 1,
+      "metrics": {
+        "accuracy": 0.7163675410339009,
+        "best_iteration": 371,
+        "test_accuracy": 0.5631067961165048,
+        "test_f1": 0.5300845350571854,
+        "test_precision": 0.5975336322869955,
+        "test_recall": 0.47631814119749777,
+        "optimal_threshold": 0.5100000000000001
+      },
+      "artifact_path": "models\\artifacts\\v20260403.070510",
+      "tickers_count": 43
+    },
+    {
+      "version": "v20260403.173421",
+      "timestamp": "2026-04-03T17:34:23.570150Z",
+      "seed": 42,
+      "horizon": 1,
+      "metrics": {
+        "accuracy": 0.7163675410339009,
+        "best_iteration": 371,
+        "test_accuracy": 0.5631067961165048,
+        "test_f1": 0.5300845350571854,
+        "test_precision": 0.5975336322869955,
+        "test_recall": 0.47631814119749777,
+        "optimal_threshold": 0.5100000000000001
+      },
+      "artifact_path": "models\\artifacts\\v20260403.173421",
+      "tickers_count": 43
+    },
+    {
+      "version": "v20260403.200318",
+      "timestamp": "2026-04-03T20:03:21.219351Z",
+      "seed": 42,
+      "horizon": 1,
+      "metrics": {
+        "accuracy": 0.7163675410339009,
+        "best_iteration": 371,
+        "test_accuracy": 0.5631067961165048,
+        "test_f1": 0.5300845350571854,
+        "test_precision": 0.5975336322869955,
+        "test_recall": 0.47631814119749777,
+        "optimal_threshold": 0.5100000000000001
+      },
+      "artifact_path": "models\\artifacts\\v20260403.200318",
+      "tickers_count": 43
+    },
+    {
+      "version": "v20260403.202030",
+      "timestamp": "2026-04-03T20:20:32.252591Z",
+      "seed": 42,
+      "horizon": 1,
+      "metrics": {
+        "accuracy": 0.7242111650485437,
+        "best_iteration": 430,
+        "test_accuracy": 0.5580438756855576,
+        "test_f1": 0.5771753388718845,
+        "test_precision": 0.5699481865284974,
+        "test_recall": 0.5845881310894597,
+        "optimal_threshold": 0.4900000000000001
+      },
+      "artifact_path": "models\\artifacts\\v20260403.202030",
+      "tickers_count": 48
+    }
+  ],
+  "latest": "v20260403.202030"
+}

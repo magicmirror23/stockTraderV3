@@ -1,0 +1,441 @@
+<div class="pf">
+  <!-- ── Header ── -->
+  <div class="pf__header">
+    <div class="pf__header-left">
+      <h1 class="pf__title">Portfolio</h1>
+      <span class="pf__subtitle text-muted">Overview &amp; Analytics</span>
+    </div>
+    <div class="pf__header-right">
+      @if (lastRefresh) {
+        <span class="pf__refresh-label text-muted">
+          <i class="bi bi-arrow-clockwise"></i> {{ lastRefresh }}
+        </span>
+      }
+      <button class="btn btn-sm btn-outline-secondary" (click)="refresh()">
+        <i class="bi bi-arrow-repeat"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Summary Cards ── -->
+  <section class="pf__summary">
+    @if (loadingMetrics) {
+      <app-loading-skeleton shape="card" [repeat]="6" height="88px" />
+    } @else {
+      <app-stat-card
+        label="Total Value"
+        [value]="fmtCurrency(totalValue)"
+        icon="bi-wallet2"
+        [trend]="trend(totalPnl)"
+      />
+      <app-stat-card
+        label="Invested"
+        [value]="fmtCurrency(investedValue)"
+        icon="bi-bar-chart-line"
+        [muted]="true"
+      />
+      <app-stat-card
+        label="Cash"
+        [value]="fmtCurrency(cashBalance)"
+        icon="bi-cash-stack"
+        [muted]="true"
+      />
+      <app-stat-card
+        label="Day P&L"
+        [value]="fmtCurrency(dayPnl)"
+        icon="bi-graph-up-arrow"
+        [trend]="trend(dayPnl)"
+      />
+      <app-stat-card
+        label="Total P&L"
+        [value]="fmtCurrency(totalPnl)"
+        icon="bi-calculator"
+        [trend]="trend(totalPnl)"
+      />
+      <app-stat-card
+        label="Exposure"
+        [value]="exposurePct.toFixed(1) + '%'"
+        icon="bi-shield-exclamation"
+        [trend]="exposurePct > 80 ? 'down' : (exposurePct > 50 ? 'flat' : 'up')"
+      />
+    }
+  </section>
+
+  <!-- ── P&L Snapshot ── -->
+  <section class="pf__pnl-row">
+    @if (!loadingMetrics && metrics) {
+      <div class="pf__pnl-item">
+        <app-pnl-display [value]="metrics.unrealized_pnl" label="Unrealized" [showSign]="true" size="lg" />
+      </div>
+      <div class="pf__pnl-item">
+        <app-pnl-display [value]="metrics.realized_pnl" label="Realized" [showSign]="true" size="lg" />
+      </div>
+      <div class="pf__pnl-item">
+        <app-pnl-display [value]="metrics.total_charges" label="Charges" [showSign]="true" size="md" />
+      </div>
+      <div class="pf__pnl-item">
+        <app-pnl-display [value]="metrics.net_pnl" label="Net P&L" [showSign]="true" size="lg" [pill]="true" />
+      </div>
+    }
+  </section>
+
+  <!-- ── Main Grid (chart + positions) ── -->
+  <div class="pf__grid">
+
+    <!-- Daily Equity Chart -->
+    <section class="pf__card pf__equity">
+      <div class="pf__card-head">
+        <h2 class="pf__card-title">
+          <i class="bi bi-graph-up"></i> Daily Equity Curve
+        </h2>
+      </div>
+      <div class="pf__card-body">
+        @if (loadingPositions) {
+          <app-loading-skeleton shape="card" height="280px" />
+        } @else if (equityCurve.length === 0) {
+          <app-empty-state
+            icon="bi-graph-up"
+            title="No equity data"
+            message="Equity curve will appear once trades are recorded."
+            [compact]="true"
+          />
+        } @else {
+          <app-trading-chart
+            mode="line"
+            [lineData]="equityCurve"
+            [height]="280"
+            [showVolume]="false"
+            [showCrosshair]="true"
+            [autoFit]="true"
+          />
+        }
+      </div>
+    </section>
+
+    <!-- Positions Preview -->
+    <section class="pf__card pf__positions">
+      <div class="pf__card-head">
+        <h2 class="pf__card-title">
+          <i class="bi bi-lightning-charge"></i> Open Positions
+        </h2>
+        @if (positions.length > 0) {
+          <app-state-badge variant="info" [label]="positions.length + ' active'" [dot]="true" size="sm" />
+        }
+      </div>
+      <div class="pf__card-body">
+        @if (loadingPositions) {
+          <app-loading-skeleton shape="card" [repeat]="4" height="36px" />
+        } @else if (positions.length === 0) {
+          <app-empty-state
+            icon="bi-lightning-charge"
+            title="No open positions"
+            message="Positions will appear once you enter a trade."
+            [compact]="true"
+          />
+        } @else {
+          <div class="pf__table-wrap">
+            <table class="pf__table">
+              <thead>
+                <tr>
+                  <th>Ticker</th>
+                  <th>Side</th>
+                  <th class="text-end">Qty</th>
+                  <th class="text-end">Avg Price</th>
+                  <th class="text-end">LTP</th>
+                  <th class="text-end">Unrealized P&L</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (pos of positions; track trackByTicker($index, pos)) {
+                  <tr>
+                    <td class="pf__ticker">{{ pos.ticker }}</td>
+                    <td>
+                      <app-state-badge
+                        [variant]="pos.side === 'long' ? 'success' : 'danger'"
+                        [label]="pos.side"
+                        [uppercase]="true"
+                        size="sm"
+                      />
+                    </td>
+                    <td class="text-end font-mono">{{ pos.quantity }}</td>
+                    <td class="text-end font-mono">{{ pos.avg_price | number:'1.2-2' }}</td>
+                    <td class="text-end font-mono">{{ pos.current_price | number:'1.2-2' }}</td>
+                    <td class="text-end">
+                      <app-pnl-display [value]="pos.unrealized_pnl" [showSign]="true" size="sm" />
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+
+  <!-- ── Holdings Preview ── -->
+  <section class="pf__card pf__holdings">
+    <div class="pf__card-head">
+      <h2 class="pf__card-title">
+        <i class="bi bi-box-seam"></i> Holdings
+      </h2>
+      @if (holdings.length > 0) {
+        <app-state-badge variant="info" [label]="holdings.length + ' instruments'" size="sm" />
+      }
+    </div>
+    <div class="pf__card-body">
+      @if (loadingPositions) {
+        <app-loading-skeleton shape="card" [repeat]="3" height="36px" />
+      } @else if (holdings.length === 0) {
+        <app-empty-state
+          icon="bi-box-seam"
+          title="No holdings"
+          message="Holdings appear for instruments held overnight."
+          [compact]="true"
+        />
+      } @else {
+        <div class="pf__table-wrap">
+          <table class="pf__table">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Sector</th>
+                <th class="text-end">Qty</th>
+                <th class="text-end">Avg Cost</th>
+                <th class="text-end">Current Value</th>
+                <th class="text-end">Return</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (h of holdings; track trackByTicker($index, h)) {
+                <tr>
+                  <td class="pf__ticker">{{ h.ticker }}</td>
+                  <td class="text-muted">{{ h.sector ?? '—' }}</td>
+                  <td class="text-end font-mono">{{ h.quantity }}</td>
+                  <td class="text-end font-mono">{{ h.avg_cost | number:'1.2-2' }}</td>
+                  <td class="text-end font-mono">{{ h.current_value | number:'1.2-2' }}</td>
+                  <td class="text-end">
+                    <app-pnl-display [value]="h.total_return" [showSign]="true" size="sm" />
+                    <span class="pf__return-pct" [class.text-success]="h.total_return_pct >= 0" [class.text-danger]="h.total_return_pct < 0">
+                      ({{ h.total_return_pct | number:'1.2-2' }}%)
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- ── Analytics Row ── -->
+  <div class="pf__analytics-grid">
+
+    <!-- Performance Metrics -->
+    <section class="pf__card">
+      <div class="pf__card-head">
+        <h2 class="pf__card-title">
+          <i class="bi bi-speedometer2"></i> Performance Ratios
+        </h2>
+      </div>
+      <div class="pf__card-body">
+        @if (loadingMetrics) {
+          <app-loading-skeleton shape="card" [repeat]="4" height="28px" />
+        } @else if (!metrics) {
+          <app-empty-state icon="bi-speedometer2" title="No metrics" message="Ratios require trade history." [compact]="true" />
+        } @else {
+          <div class="pf__metric-list">
+            <div class="pf__metric-row">
+              <span class="pf__metric-label">Sharpe</span>
+              <span class="pf__metric-value font-mono">{{ fmtRatio(metrics.sharpe_ratio) }}</span>
+            </div>
+            <div class="pf__metric-row">
+              <span class="pf__metric-label">Sortino</span>
+              <span class="pf__metric-value font-mono">{{ fmtRatio(metrics.sortino_ratio) }}</span>
+            </div>
+            <div class="pf__metric-row">
+              <span class="pf__metric-label">Calmar</span>
+              <span class="pf__metric-value font-mono">{{ fmtRatio(metrics.calmar_ratio) }}</span>
+            </div>
+            <div class="pf__metric-row">
+              <span class="pf__metric-label">Max Drawdown</span>
+              <span class="pf__metric-value font-mono text-danger">{{ fmtPct(metrics.max_drawdown_pct) }}</span>
+            </div>
+            <div class="pf__metric-row">
+              <span class="pf__metric-label">Win Rate</span>
+              <span class="pf__metric-value font-mono">{{ fmtPct(metrics.win_rate) }}</span>
+            </div>
+            <div class="pf__metric-row">
+              <span class="pf__metric-label">Profit Factor</span>
+              <span class="pf__metric-value font-mono">{{ metrics.profit_factor | number:'1.2-2' }}</span>
+            </div>
+            <div class="pf__metric-row">
+              <span class="pf__metric-label">Avg Win</span>
+              <span class="pf__metric-value font-mono text-success">{{ fmtCurrency(metrics.avg_win) }}</span>
+            </div>
+            <div class="pf__metric-row">
+              <span class="pf__metric-label">Avg Loss</span>
+              <span class="pf__metric-value font-mono text-danger">{{ fmtCurrency(metrics.avg_loss) }}</span>
+            </div>
+            <div class="pf__metric-row">
+              <span class="pf__metric-label">Total Trades</span>
+              <span class="pf__metric-value font-mono">{{ metrics.total_trades }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- P&L Attribution -->
+    <section class="pf__card">
+      <div class="pf__card-head">
+        <h2 class="pf__card-title">
+          <i class="bi bi-pie-chart"></i> P&L Attribution
+        </h2>
+      </div>
+      <div class="pf__card-body">
+        @if (loadingMetrics) {
+          <app-loading-skeleton shape="card" [repeat]="4" height="28px" />
+        } @else if (strategyAttrib.length === 0 && sectorAttrib.length === 0 && symbolAttrib.length === 0) {
+          <app-empty-state icon="bi-pie-chart" title="No attribution data" message="Attribution requires completed trades." [compact]="true" />
+        } @else {
+          @if (strategyAttrib.length > 0) {
+            <h3 class="pf__sub-heading">By Strategy</h3>
+            @for (item of strategyAttrib; track trackByKey($index, item)) {
+              <div class="pf__attrib-row">
+                <span>{{ item.key }}</span>
+                <app-pnl-display [value]="item.value" [showSign]="true" size="sm" />
+              </div>
+            }
+          }
+          @if (sectorAttrib.length > 0) {
+            <h3 class="pf__sub-heading">By Sector</h3>
+            @for (item of sectorAttrib; track trackByKey($index, item)) {
+              <div class="pf__attrib-row">
+                <span>{{ item.key }}</span>
+                <app-pnl-display [value]="item.value" [showSign]="true" size="sm" />
+              </div>
+            }
+          }
+          @if (symbolAttrib.length > 0) {
+            <h3 class="pf__sub-heading">Top Symbols</h3>
+            @for (item of symbolAttrib; track trackByKey($index, item)) {
+              <div class="pf__attrib-row">
+                <span>{{ item.key }}</span>
+                <app-pnl-display [value]="item.value" [showSign]="true" size="sm" />
+              </div>
+            }
+          }
+        }
+      </div>
+    </section>
+
+    <!-- Portfolio Greeks -->
+    <section class="pf__card">
+      <div class="pf__card-head">
+        <h2 class="pf__card-title">
+          <i class="bi bi-calculator-fill"></i> Portfolio Greeks
+        </h2>
+      </div>
+      <div class="pf__card-body">
+        @if (loadingMetrics) {
+          <app-loading-skeleton shape="card" [repeat]="4" height="28px" />
+        } @else if (greeksEntries.length === 0) {
+          <app-empty-state icon="bi-calculator-fill" title="No greek exposure" message="Greeks appear for options positions." [compact]="true" />
+        } @else {
+          <div class="pf__metric-list">
+            @for (g of greeksEntries; track trackByKey($index, g)) {
+              <div class="pf__metric-row">
+                <span class="pf__metric-label">{{ g.key }}</span>
+                <span class="pf__metric-value font-mono">{{ g.value | number:'1.4-4' }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+
+  <!-- ── Exposure & Allocation Row ── -->
+  <div class="pf__bottom-grid">
+
+    <!-- Exposure Heatmap -->
+    <section class="pf__card">
+      <div class="pf__card-head">
+        <h2 class="pf__card-title">
+          <i class="bi bi-grid-3x3-gap"></i> Exposure Heatmap
+        </h2>
+      </div>
+      <div class="pf__card-body">
+        @if (loadingExposure) {
+          <app-loading-skeleton shape="card" [repeat]="3" height="48px" />
+        } @else if (exposureCategories.length === 0) {
+          <app-empty-state icon="bi-grid-3x3-gap" title="No exposure data" message="Exposure map requires positions." [compact]="true" />
+        } @else {
+          @for (cat of exposureCategories; track cat.key) {
+            <h3 class="pf__sub-heading">{{ cat.key }}</h3>
+            @for (item of cat.entries; track item.key) {
+              <div class="pf__exposure-row">
+                <div class="pf__exposure-meta">
+                  <span>{{ item.key }}</span>
+                  <span class="font-mono">{{ item.value | number:'1.1-1' }}%</span>
+                </div>
+                <div class="pf__bar-track">
+                  <div
+                    class="pf__bar-fill"
+                    [style.width.%]="item.value"
+                    [class.pf__bar-fill--danger]="item.value > 30"
+                    [class.pf__bar-fill--warn]="item.value > 20 && item.value <= 30"
+                    [class.pf__bar-fill--ok]="item.value <= 20"
+                  ></div>
+                </div>
+              </div>
+            }
+          }
+        }
+      </div>
+    </section>
+
+    <!-- Capital Allocation -->
+    <section class="pf__card">
+      <div class="pf__card-head">
+        <h2 class="pf__card-title">
+          <i class="bi bi-diagram-3"></i> Capital Allocation
+        </h2>
+      </div>
+      <div class="pf__card-body">
+        @if (loadingAllocation) {
+          <app-loading-skeleton shape="card" [repeat]="3" height="28px" />
+        } @else if (allocationEntries.length === 0) {
+          <app-empty-state icon="bi-diagram-3" title="No allocation data" message="Allocation data will appear when configured." [compact]="true" />
+        } @else {
+          <div class="pf__metric-list">
+            @for (a of allocationEntries; track trackByKey($index, a)) {
+              <div class="pf__metric-row">
+                <span class="pf__metric-label">{{ a.key }}</span>
+                <span class="pf__metric-value font-mono">{{ a.value | number:'1.2-2' }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+
+  <!-- ── Quick Actions ── -->
+  <section class="pf__quick-actions">
+    <a routerLink="/paper" class="pf__action-link">
+      <i class="bi bi-joystick"></i> Paper Trade
+    </a>
+    <a routerLink="/options" class="pf__action-link">
+      <i class="bi bi-layers"></i> Options Chain
+    </a>
+    <a routerLink="/strategies" class="pf__action-link">
+      <i class="bi bi-gear-wide-connected"></i> Strategies
+    </a>
+    <a routerLink="/journal" class="pf__action-link">
+      <i class="bi bi-journal-text"></i> Trade Journal
+    </a>
+  </section>
+</div>

@@ -1,0 +1,312 @@
+@use '../../variables' as *;
+
+// ── Layout ──────────────────────────────────────────────────
+
+.pf {
+  padding: 1.5rem;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.pf__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pf__header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.pf__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.pf__subtitle {
+  font-size: 0.85rem;
+}
+
+.pf__header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pf__refresh-label {
+  font-size: 0.75rem;
+  i { margin-right: 0.25rem; }
+}
+
+// ── Summary Cards ───────────────────────────────────────────
+
+.pf__summary {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+// ── P&L Snapshot Row ────────────────────────────────────────
+
+.pf__pnl-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--bs-body-bg, #fff);
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: $border-radius;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.pf__pnl-item {
+  flex: 1 1 auto;
+  min-width: 120px;
+  text-align: center;
+}
+
+// ── Main Grid ───────────────────────────────────────────────
+
+.pf__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+// ── Card ────────────────────────────────────────────────────
+
+.pf__card {
+  background: var(--bs-body-bg, #fff);
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: $border-radius;
+  overflow: hidden;
+}
+
+.pf__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.pf__card-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+  i { margin-right: 0.4rem; opacity: 0.6; }
+}
+
+.pf__card-body {
+  padding: 1rem;
+}
+
+// ── Tables ──────────────────────────────────────────────────
+
+.pf__table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pf__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+
+  th, td {
+    padding: 0.45rem 0.6rem;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--bs-secondary-color, #6c757d);
+    border-bottom: 2px solid var(--bs-border-color, #dee2e6);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,.06));
+    &:last-child { border-bottom: none; }
+    &:hover { background: rgba(0,0,0,.015); }
+  }
+}
+
+.pf__ticker {
+  font-weight: 600;
+  font-family: $font-family-monospace;
+}
+
+.pf__return-pct {
+  font-size: 0.75rem;
+  font-family: $font-family-monospace;
+  margin-left: 0.25rem;
+}
+
+// ── Analytics Grid ──────────────────────────────────────────
+
+.pf__analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+// ── Bottom Grid ─────────────────────────────────────────────
+
+.pf__bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+// ── Metric List ─────────────────────────────────────────────
+
+.pf__metric-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.pf__metric-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,.06));
+  font-size: 0.82rem;
+  &:last-child { border-bottom: none; }
+}
+
+.pf__metric-label {
+  color: var(--bs-secondary-color, #6c757d);
+  font-weight: 500;
+}
+
+.pf__metric-value {
+  font-weight: 600;
+}
+
+// ── Sub Heading ─────────────────────────────────────────────
+
+.pf__sub-heading {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bs-secondary-color, #6c757d);
+  margin: 0.75rem 0 0.35rem;
+  &:first-child { margin-top: 0; }
+}
+
+// ── Attribution Row ─────────────────────────────────────────
+
+.pf__attrib-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,.06));
+  &:last-child { border-bottom: none; }
+}
+
+// ── Exposure Bars ───────────────────────────────────────────
+
+.pf__exposure-row {
+  margin-bottom: 0.6rem;
+}
+
+.pf__exposure-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  margin-bottom: 0.2rem;
+}
+
+.pf__bar-track {
+  height: 5px;
+  background: var(--bs-border-color, #dee2e6);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.pf__bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+
+  &--ok   { background: $success; }
+  &--warn { background: #f59e0b; }
+  &--danger { background: $danger; }
+}
+
+// ── Quick Actions ───────────────────────────────────────────
+
+.pf__quick-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pf__action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: $border-radius;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  background: var(--bs-body-bg, #fff);
+  color: $primary;
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    border-color: $primary;
+    box-shadow: $box-shadow-sm;
+    text-decoration: none;
+  }
+}
+
+// ── Utilities ───────────────────────────────────────────────
+
+.font-mono { font-family: $font-family-monospace; }
+.text-end  { text-align: right; }
+.text-muted { color: var(--bs-secondary-color, #6c757d); }
+.text-success { color: $success; }
+.text-danger  { color: $danger; }
+
+// ── Responsive ──────────────────────────────────────────────
+
+@media (max-width: 1200px) {
+  .pf__summary { grid-template-columns: repeat(3, 1fr); }
+  .pf__analytics-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .pf { padding: 1rem; }
+  .pf__grid { grid-template-columns: 1fr; }
+  .pf__bottom-grid { grid-template-columns: 1fr; }
+  .pf__analytics-grid { grid-template-columns: 1fr; }
+  .pf__summary { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 576px) {
+  .pf__summary { grid-template-columns: 1fr; }
+  .pf__pnl-row { flex-direction: column; gap: 0.5rem; }
+}

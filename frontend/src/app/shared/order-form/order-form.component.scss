@@ -1,0 +1,302 @@
+@use '../../../variables' as *;
+
+.order-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: $border-radius-lg;
+
+  // ── Field ──
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  &__label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-secondary);
+  }
+
+  &__hint {
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+    opacity: 0.7;
+  }
+
+  &__error {
+    font-size: 0.6875rem;
+    color: $danger;
+  }
+
+  // ── Inputs ──
+
+  &__input {
+    width: 100%;
+    padding: $input-padding-y $input-padding-x;
+    font-size: 0.8125rem;
+    font-family: $font-family-monospace;
+    color: var(--color-text);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: $border-radius;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+    &:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px rgba($primary, 0.12);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    // Hide number input spinners
+    &[type='number'] {
+      -moz-appearance: textfield;
+      &::-webkit-inner-spin-button,
+      &::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+    }
+
+    &--qty {
+      text-align: center;
+      flex: 1;
+    }
+  }
+
+  // ── Buy / Sell toggle ──
+
+  &__side-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.375rem;
+  }
+
+  &__side-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border: 2px solid transparent;
+    border-radius: $border-radius;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: var(--color-bg);
+    color: var(--color-text-secondary);
+
+    &--buy {
+      &.order-form__side-btn--active {
+        background: rgba($success, 0.1);
+        border-color: $success;
+        color: $success;
+      }
+    }
+
+    &--sell {
+      &.order-form__side-btn--active {
+        background: rgba($danger, 0.1);
+        border-color: $danger;
+        color: $danger;
+      }
+    }
+
+    &:hover:not(:disabled):not(.order-form__side-btn--active) {
+      background: var(--color-surface-hover);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  // ── Order type / product type group ──
+
+  &__type-group {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  &__type-btn {
+    flex: 1;
+    padding: 0.3125rem 0.5rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--color-text-secondary);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: $border-radius-sm;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &--active {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: #fff;
+    }
+
+    &:hover:not(:disabled):not(.order-form__type-btn--active) {
+      background: var(--color-surface-hover);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  // ── Quantity stepper ──
+
+  &__qty-wrap {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  &__qty-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    padding: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+    transition: background 0.15s ease;
+    user-select: none;
+
+    &:first-child {
+      border-radius: $border-radius 0 0 $border-radius;
+      border-right: none;
+    }
+
+    &:last-child {
+      border-radius: 0 $border-radius $border-radius 0;
+      border-left: none;
+    }
+
+    &:hover:not(:disabled) {
+      background: var(--color-surface-hover);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  // ── Estimated value ──
+
+  &__estimate {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background: var(--color-bg);
+    border-radius: $border-radius-sm;
+    font-size: 0.75rem;
+  }
+
+  &__estimate-label {
+    color: var(--color-text-secondary);
+  }
+
+  &__estimate-value {
+    font-family: $font-family-monospace;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  // ── Risk warning ──
+
+  &__risk-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.375rem;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.6875rem;
+    color: $warning;
+    background: rgba($warning, 0.06);
+    border: 1px solid rgba($warning, 0.15);
+    border-radius: $border-radius-sm;
+
+    i {
+      font-size: 0.75rem;
+      margin-top: 0.0625rem;
+      flex-shrink: 0;
+    }
+  }
+
+  // ── Submit button ──
+
+  &__submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #fff;
+    border: none;
+    border-radius: $border-radius;
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+
+    &--buy {
+      background: $success;
+
+      &:hover:not(:disabled) {
+        background: darken($success, 5%);
+      }
+    }
+
+    &--sell {
+      background: $danger;
+
+      &:hover:not(:disabled) {
+        background: darken($danger, 5%);
+      }
+    }
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+  }
+
+  &__submit-spinner {
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: order-spin 0.6s linear infinite;
+  }
+}
+
+@keyframes order-spin {
+  to { transform: rotate(360deg); }
+}

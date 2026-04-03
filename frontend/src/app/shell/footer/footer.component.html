@@ -1,0 +1,27 @@
+<!-- Connection status -->
+<span class="footer-item">
+  <span class="status-dot" [ngClass]="connectionDotClass"></span>
+  {{ connectionLabel }}
+</span>
+
+<span class="footer-divider"></span>
+
+<!-- Market phase -->
+<span class="footer-item">
+  <i class="bi bi-clock" style="font-size: 0.72rem;"></i>
+  {{ marketPhase | titlecase }}
+</span>
+
+<span class="footer-divider footer-hide-xs"></span>
+
+<!-- Service summary -->
+<span class="footer-item footer-hide-xs">
+  API {{ apiStatus }}
+</span>
+
+<span class="footer-spacer"></span>
+
+<!-- Timezone clock -->
+<span class="footer-clock">
+  IST {{ clock }}
+</span>

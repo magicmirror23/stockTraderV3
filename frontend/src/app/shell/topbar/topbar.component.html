@@ -1,0 +1,53 @@
+<!-- Hamburger (mobile only) -->
+<button class="topbar-hamburger" (click)="menuToggle.emit()" title="Menu">
+  <i class="bi bi-list"></i>
+</button>
+
+<!-- Symbol search -->
+<div class="topbar-search">
+  <i class="bi bi-search search-icon"></i>
+  <input type="text"
+         placeholder="Search symbol… (e.g. RELIANCE, NIFTY)"
+         [value]="searchQuery"
+         (input)="onSearchInput($event)"
+         (keydown.enter)="onSearchSubmit()" />
+</div>
+
+<span class="topbar-spacer"></span>
+
+<!-- Quick actions -->
+<div class="topbar-actions d-none d-md-flex">
+  <button class="action-btn" (click)="quickTrade.emit()" title="Quick trade">
+    <i class="bi bi-lightning-fill"></i>
+    <span class="action-label">Trade</span>
+  </button>
+  <button class="action-btn" (click)="refresh.emit()" title="Refresh data">
+    <i class="bi bi-arrow-clockwise"></i>
+  </button>
+</div>
+
+<!-- Market session badge -->
+<div class="market-badge"
+     [ngClass]="{
+       'market-open':   marketPhase === 'open',
+       'market-closed': marketPhase === 'closed' || marketPhase === 'holiday' || marketPhase === 'weekend',
+       'market-pre':    marketPhase === 'pre_open' || marketPhase === 'post_close'
+     }">
+  <span class="badge-dot"></span>
+  <span class="badge-label">{{ marketPhaseLabel }}</span>
+</div>
+
+<!-- Notifications -->
+<button class="topbar-bell" title="Notifications">
+  <i class="bi bi-bell"></i>
+  @if (hasNotifications) {
+    <span class="bell-badge"></span>
+  }
+</button>
+
+<!-- Account -->
+<div class="topbar-account" title="Account">
+  <div class="account-avatar">ST</div>
+  <span class="account-name">Trader</span>
+  <i class="bi bi-chevron-down" style="font-size: 0.6rem; color: #9e9e9e;"></i>
+</div>

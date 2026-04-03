@@ -1,0 +1,8 @@
+<span
+  class="state-badge"
+  [ngClass]="[badgeClass, 'state-badge--' + size, uppercase ? 'state-badge--upper' : '']">
+  @if (dot) {
+    <span class="state-badge__dot"></span>
+  }
+  {{ displayLabel }}
+</span>

@@ -1,0 +1,95 @@
+# Render config
+services:
+  # API Gateway
+  - type: web
+    name: stocktrader-gateway
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: uvicorn backend.api.services.gateway:app --host 0.0.0.0 --port 8000
+    plan: free
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: MARKET_DATA_URL
+        fromService:
+          name: stocktrader-market-data
+          type: pserv
+          property: host
+      - key: PREDICTION_URL
+        fromService:
+          name: stocktrader-prediction
+          type: pserv
+          property: host
+      - key: TRADING_URL
+        fromService:
+          name: stocktrader-trading
+          type: pserv
+          property: host
+      - key: ADMIN_URL
+        fromService:
+          name: stocktrader-admin
+          type: pserv
+          property: host
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stocktrader-db
+          property: connectionString
+    healthCheckPath: /api/v1/health
+
+  # Market Data Service (internal)
+  - type: pserv
+    name: stocktrader-market-data
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: uvicorn backend.api.services.market_data:app --host 0.0.0.0 --port 8001
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stocktrader-db
+          property: connectionString
+
+  # Prediction / ML Service (internal)
+  - type: pserv
+    name: stocktrader-prediction
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: uvicorn backend.api.services.prediction:app --host 0.0.0.0 --port 8002
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stocktrader-db
+          property: connectionString
+
+  # Trading Service (internal)
+  - type: pserv
+    name: stocktrader-trading
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: uvicorn backend.api.services.trading:app --host 0.0.0.0 --port 8003
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stocktrader-db
+          property: connectionString
+
+  # Admin / Backtest Service (internal)
+  - type: pserv
+    name: stocktrader-admin
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: uvicorn backend.api.services.admin_backtest:app --host 0.0.0.0 --port 8004
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stocktrader-db
+          property: connectionString
+
+databases:
+  - name: stocktrader-db
+    plan: free
+    databaseName: stocktrader
+    user: stocktrader

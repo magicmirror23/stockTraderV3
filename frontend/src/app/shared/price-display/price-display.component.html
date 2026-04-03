@@ -1,0 +1,11 @@
+<span class="price-display" [ngClass]="['price-display--' + size, inline ? 'price-display--inline' : '']">
+  <span class="price-display__price text-mono">{{ price | number:'1.2-2' }}</span>
+
+  @if (effectiveChange !== 0 || changePct !== undefined) {
+    <span class="price-display__change text-mono" [ngClass]="dirClass">
+      <span class="price-display__arrow">{{ arrow }}</span>
+      <span>{{ effectiveChange | number:'1.2-2' }}</span>
+      <span class="price-display__pct">({{ effectiveChangePct | number:'1.2-2' }}%)</span>
+    </span>
+  }
+</span>

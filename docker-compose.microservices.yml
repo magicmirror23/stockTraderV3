@@ -1,0 +1,186 @@
+version: "3.9"
+
+services:
+  # ── API Gateway (Port 8000) ──────────────────────────────────────────────
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stocktrader-gateway
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - MARKET_DATA_URL=http://market-data:8001
+      - PREDICTION_URL=http://prediction:8002
+      - TRADING_URL=http://trading:8003
+      - ADMIN_URL=http://admin:8004
+    depends_on:
+      - market-data
+      - prediction
+      - trading
+      - admin
+    volumes:
+      - .:/app
+    command: >
+      uvicorn backend.api.services.gateway:app --host 0.0.0.0 --port 8000 --reload
+
+  # ── Market Data Service (Port 8001) ──────────────────────────────────────
+  market-data:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stocktrader-market-data
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    command: >
+      uvicorn backend.api.services.market_data:app --host 0.0.0.0 --port 8001 --reload
+
+  # ── Prediction / ML Service (Port 8002) ──────────────────────────────────
+  prediction:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stocktrader-prediction
+    ports:
+      - "8002:8002"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: >
+      uvicorn backend.api.services.prediction:app --host 0.0.0.0 --port 8002 --reload
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+
+  # ── Trading Service (Port 8003) ──────────────────────────────────────────
+  trading:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stocktrader-trading
+    ports:
+      - "8003:8003"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: >
+      uvicorn backend.api.services.trading:app --host 0.0.0.0 --port 8003 --reload
+
+  # ── Admin / Backtest Service (Port 8004) ─────────────────────────────────
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stocktrader-admin
+    ports:
+      - "8004:8004"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: >
+      uvicorn backend.api.services.admin_backtest:app --host 0.0.0.0 --port 8004 --reload
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+
+  # ── Frontend ─────────────────────────────────────────────────────────────
+  frontend:
+    image: node:20-alpine
+    container_name: stocktrader-frontend
+    working_dir: /app
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./frontend:/app
+    command: sh -c "npm install && npx ng serve --host 0.0.0.0 --proxy-config proxy.conf.json"
+    environment:
+      - NODE_ENV=development
+
+  # ── Celery Worker ────────────────────────────────────────────────────────
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stocktrader-celery-worker
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: >
+      celery -A backend.services.celery_tasks worker --loglevel=info
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stocktrader-celery-beat
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: >
+      celery -A backend.services.celery_tasks beat --loglevel=info
+
+  # ── Infrastructure ───────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: stocktrader-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-stocktrader}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stocktrader}
+      POSTGRES_DB: ${POSTGRES_DB:-stocktrader}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stocktrader}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: stocktrader-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

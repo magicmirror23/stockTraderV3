@@ -1,0 +1,441 @@
+<!-- ── Ticker Tape ───────────────────────────────────────── -->
+@if (tickerItems.length > 0) {
+  <app-ticker-tape [items]="tickerItems" [speed]="35" [pauseOnHover]="true" />
+}
+
+<div class="mo">
+
+  <!-- ── Page Header ─────────────────────────────────────── -->
+  <header class="mo__header">
+    <div class="mo__header-left">
+      <h1 class="mo__title">Market Overview</h1>
+      <div class="mo__meta">
+        @if (lastRefresh) {
+          <span class="mo__meta-item">
+            <i class="bi bi-arrow-clockwise"></i> {{ lastRefresh }}
+          </span>
+        }
+        <span class="mo__meta-item">
+          <i class="bi bi-broadcast"></i> {{ totalSymbols }} symbols
+        </span>
+        <span class="mo__meta-item">
+          <span class="mo__conn-dot" [class.mo__conn-dot--on]="wsConnected"></span>
+          {{ wsConnected ? 'Live' : 'Offline' }}
+        </span>
+      </div>
+    </div>
+    <div class="mo__header-right">
+      <button class="mo__refresh-btn" (click)="refresh()" title="Refresh all data">
+        <i class="bi bi-arrow-repeat"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Session Status Bar ──────────────────────────────── -->
+  <section class="mo__session-bar">
+    @if (loadingMarket) {
+      <app-loading-skeleton shape="row" />
+    } @else if (marketStatus) {
+      <div class="mo__session">
+        <div class="mo__session-left">
+          <app-state-badge
+            [variant]="sessionPhaseBadge"
+            [label]="sessionPhaseLabel"
+            [dot]="true"
+            size="md"
+          />
+          <span class="mo__session-msg">{{ marketStatus.message }}</span>
+        </div>
+        <div class="mo__session-right">
+          <span class="mo__session-next">
+            <i class="bi bi-clock"></i>
+            {{ marketStatus.next_event }} — <strong>{{ marketStatus.next_event_time }}</strong>
+          </span>
+          @if (marketStatus.ist_now) {
+            <span class="mo__session-time">IST {{ marketStatus.ist_now }}</span>
+          }
+        </div>
+      </div>
+    }
+  </section>
+
+  <!-- ── Indices Row ─────────────────────────────────────── -->
+  <section class="mo__section">
+    <div class="mo__section-hdr">
+      <h2 class="mo__section-title">Indices</h2>
+      <a routerLink="/live" class="mo__section-link">Full Market <i class="bi bi-arrow-right"></i></a>
+    </div>
+    @if (loadingOverview) {
+      <div class="mo__indices-grid">
+        @for (i of [1,2,3,4,5]; track i) {
+          <app-loading-skeleton shape="card" />
+        }
+      </div>
+    } @else if (indices.length === 0) {
+      <app-empty-state icon="bar-chart-line" title="No index data" message="Index data unavailable" [compact]="true" />
+    } @else {
+      <div class="mo__indices-grid">
+        @for (idx of indices; track trackBySymbol($index, idx)) {
+          <a class="mo__index-card" [routerLink]="['/chart', idx.symbol]">
+            <span class="mo__index-name">{{ idx.displayName }}</span>
+            <span class="mo__index-price" [class.text-buy]="idx.changePct >= 0" [class.text-sell]="idx.changePct < 0">
+              {{ idx.price | number:'1.2-2' }}
+            </span>
+            <span class="mo__index-change" [class.text-buy]="idx.changePct >= 0" [class.text-sell]="idx.changePct < 0">
+              {{ idx.changePct >= 0 ? '▲' : '▼' }}
+              {{ idx.change | number:'1.2-2' }}
+              ({{ idx.changePct | number:'1.2-2' }}%)
+            </span>
+          </a>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- ── Two-Column: Breadth + VIX ───────────────────────── -->
+  <div class="mo__row-2">
+    <!-- Market Breadth -->
+    <section class="mo__card">
+      <h3 class="mo__card-title">Market Breadth</h3>
+      @if (loadingOverview) {
+        <app-loading-skeleton shape="card" />
+      } @else {
+        <div class="mo__breadth">
+          <div class="mo__breadth-bar">
+            <div class="mo__breadth-adv" [style.width.%]="breadthAdvPct"></div>
+            <div class="mo__breadth-dec" [style.width.%]="breadthDecPct"></div>
+          </div>
+          <div class="mo__breadth-stats">
+            <div class="mo__breadth-item">
+              <span class="mo__breadth-dot mo__breadth-dot--adv"></span>
+              <span>Advances</span>
+              <strong class="text-buy">{{ breadth.advances }}</strong>
+            </div>
+            <div class="mo__breadth-item">
+              <span class="mo__breadth-dot mo__breadth-dot--dec"></span>
+              <span>Declines</span>
+              <strong class="text-sell">{{ breadth.declines }}</strong>
+            </div>
+            <div class="mo__breadth-item">
+              <span class="mo__breadth-dot mo__breadth-dot--unch"></span>
+              <span>Unchanged</span>
+              <strong>{{ breadth.unchanged }}</strong>
+            </div>
+          </div>
+          <div class="mo__breadth-ratio">
+            A/D Ratio: <strong>{{ breadth.advanceRatio | number:'1.2-2' }}</strong>
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- India VIX / Volatility Snapshot -->
+    <section class="mo__card">
+      <h3 class="mo__card-title">India VIX</h3>
+      @if (loadingOverview) {
+        <app-loading-skeleton shape="card" />
+      } @else if (vix) {
+        <div class="mo__vix">
+          <div class="mo__vix-value" [class.text-sell]="vix.price > 20" [class.text-buy]="vix.price <= 15" [class.text-hold]="vix.price > 15 && vix.price <= 20">
+            {{ vix.price | number:'1.2-2' }}
+          </div>
+          <div class="mo__vix-change" [class.text-buy]="vix.changePct <= 0" [class.text-sell]="vix.changePct > 0">
+            {{ vix.changePct >= 0 ? '+' : '' }}{{ vix.changePct | number:'1.2-2' }}%
+          </div>
+          <div class="mo__vix-label">
+            @if (vix.price <= 15) {
+              <app-state-badge variant="buy" label="Low Volatility" size="xs" />
+            } @else if (vix.price <= 20) {
+              <app-state-badge variant="hold" label="Normal" size="xs" />
+            } @else if (vix.price <= 28) {
+              <app-state-badge variant="warning" label="Elevated" size="xs" />
+            } @else {
+              <app-state-badge variant="danger" label="High Volatility" size="xs" />
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="mo__vix-empty">
+          <span class="text-muted">VIX data unavailable</span>
+        </div>
+      }
+    </section>
+  </div>
+
+  <!-- ── Table Row: Gainers + Losers ─────────────────────── -->
+  <div class="mo__row-2">
+    <!-- Top Gainers -->
+    <section class="mo__card">
+      <div class="mo__card-hdr">
+        <h3 class="mo__card-title">
+          <i class="bi bi-graph-up-arrow text-buy"></i> Top Gainers
+        </h3>
+        <a routerLink="/live" class="mo__section-link">All <i class="bi bi-arrow-right"></i></a>
+      </div>
+      @if (loadingOverview) {
+        <app-loading-skeleton shape="table" [rows]="5" />
+      } @else if (gainers.length === 0) {
+        <app-empty-state icon="graph-up-arrow" title="No gainers" message="Data unavailable" [compact]="true" />
+      } @else {
+        <table class="mo__table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th class="text-end">Price</th>
+              <th class="text-end">Chg%</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (g of gainers; track trackBySymbol($index, g)) {
+              <tr class="mo__table-row" [routerLink]="['/chart', g.symbol]">
+                <td class="mo__sym">{{ g.symbol }}</td>
+                <td class="text-end">
+                  <app-price-display [price]="g.price" [change]="g.change" [changePct]="g.changePct" size="sm" [inline]="true" />
+                </td>
+                <td class="text-end text-buy fw-600">+{{ g.changePct | number:'1.2-2' }}%</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+
+    <!-- Top Losers -->
+    <section class="mo__card">
+      <div class="mo__card-hdr">
+        <h3 class="mo__card-title">
+          <i class="bi bi-graph-down-arrow text-sell"></i> Top Losers
+        </h3>
+        <a routerLink="/live" class="mo__section-link">All <i class="bi bi-arrow-right"></i></a>
+      </div>
+      @if (loadingOverview) {
+        <app-loading-skeleton shape="table" [rows]="5" />
+      } @else if (losers.length === 0) {
+        <app-empty-state icon="graph-down-arrow" title="No losers" message="Data unavailable" [compact]="true" />
+      } @else {
+        <table class="mo__table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th class="text-end">Price</th>
+              <th class="text-end">Chg%</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (l of losers; track trackBySymbol($index, l)) {
+              <tr class="mo__table-row" [routerLink]="['/chart', l.symbol]">
+                <td class="mo__sym">{{ l.symbol }}</td>
+                <td class="text-end">
+                  <app-price-display [price]="l.price" [change]="l.change" [changePct]="l.changePct" size="sm" [inline]="true" />
+                </td>
+                <td class="text-end text-sell fw-600">{{ l.changePct | number:'1.2-2' }}%</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+  </div>
+
+  <!-- ── Sector Performance ──────────────────────────────── -->
+  <section class="mo__section">
+    <div class="mo__section-hdr">
+      <h2 class="mo__section-title">Sector Performance</h2>
+    </div>
+    @if (loadingOverview) {
+      <div class="mo__sectors-grid">
+        @for (i of [1,2,3,4,5,6]; track i) {
+          <app-loading-skeleton shape="card" />
+        }
+      </div>
+    } @else if (sectors.length === 0) {
+      <app-empty-state icon="pie-chart" title="No sector data" message="Sector data unavailable" [compact]="true" />
+    } @else {
+      <div class="mo__sectors-grid">
+        @for (s of sectors; track trackBySector($index, s)) {
+          <div class="mo__sector-card">
+            <span class="mo__sector-name">{{ s.sector }}</span>
+            <span class="mo__sector-count">{{ s.symbolCount }} stocks</span>
+            <span
+              class="mo__sector-pct"
+              [class.text-buy]="s.changePct > 0"
+              [class.text-sell]="s.changePct < 0"
+              [class.text-hold]="s.changePct === 0"
+            >
+              {{ s.changePct >= 0 ? '+' : '' }}{{ s.changePct | number:'1.2-2' }}%
+            </span>
+            <div class="mo__sector-bar-wrap">
+              <div
+                class="mo__sector-bar"
+                [class.mo__sector-bar--up]="s.changePct > 0"
+                [class.mo__sector-bar--down]="s.changePct < 0"
+                [style.width.%]="(Math.min(Math.abs(s.changePct), 5) / 5) * 100"
+              ></div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- ── Three-Column: Regime + Volume + Watchlist ───────── -->
+  <div class="mo__row-3">
+    <!-- Market Regime -->
+    <section class="mo__card">
+      <div class="mo__card-hdr">
+        <h3 class="mo__card-title">
+          <i class="bi bi-thermometer-half"></i> Market Regime
+        </h3>
+        <a routerLink="/regime" class="mo__section-link">Details <i class="bi bi-arrow-right"></i></a>
+      </div>
+      @if (loadingRegime) {
+        <app-loading-skeleton shape="table" [rows]="4" />
+      } @else if (regimes.length === 0) {
+        <app-empty-state icon="thermometer-half" title="No regime data" message="Run regime detection to see results" [compact]="true" />
+      } @else {
+        <div class="mo__regime-list">
+          @for (r of regimes; track trackBySymbol($index, r)) {
+            <div class="mo__regime-row">
+              <span class="mo__sym">{{ r.symbol }}</span>
+              <app-state-badge [variant]="regimeBadge(r.regime)" [label]="r.regime" size="xs" />
+              <span class="mo__regime-conf">{{ r.confidence | number:'1.0-0' }}%</span>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- Volume Leaders -->
+    <section class="mo__card">
+      <div class="mo__card-hdr">
+        <h3 class="mo__card-title">
+          <i class="bi bi-bar-chart-fill"></i> Volume Leaders
+        </h3>
+      </div>
+      @if (loadingOverview) {
+        <app-loading-skeleton shape="table" [rows]="4" />
+      } @else if (volumeLeaders.length === 0) {
+        <app-empty-state icon="bar-chart-fill" title="No data" message="Volume data unavailable" [compact]="true" />
+      } @else {
+        <div class="mo__vol-list">
+          @for (v of volumeLeaders; track trackBySymbol($index, v)) {
+            <div class="mo__vol-row" [routerLink]="['/chart', v.symbol]">
+              <div class="mo__vol-left">
+                <span class="mo__sym">{{ v.symbol }}</span>
+                <span class="mo__vol-amt">{{ v.volume | number:'1.0-0' }}</span>
+              </div>
+              <span
+                class="mo__vol-pct"
+                [class.text-buy]="v.changePct >= 0"
+                [class.text-sell]="v.changePct < 0"
+              >
+                {{ v.changePct >= 0 ? '+' : '' }}{{ v.changePct | number:'1.2-2' }}%
+              </span>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- Mini Watchlist -->
+    <section class="mo__card">
+      <div class="mo__card-hdr">
+        <h3 class="mo__card-title">
+          <i class="bi bi-eye"></i> Watchlist
+        </h3>
+        <a routerLink="/live" class="mo__section-link">Full View <i class="bi bi-arrow-right"></i></a>
+      </div>
+      @if (watchlist.length === 0 && !loadingOverview) {
+        <app-empty-state icon="eye" title="No watchlist" message="Connect to live stream to see watchlist" [compact]="true" />
+      } @else if (watchlist.length === 0 && loadingOverview) {
+        <app-loading-skeleton shape="table" [rows]="5" />
+      } @else {
+        <div class="mo__watch-list">
+          @for (w of watchlist; track trackBySymbol($index, w)) {
+            <div class="mo__watch-row" [routerLink]="['/chart', w.symbol]">
+              <div class="mo__watch-left">
+                <span class="mo__sym">{{ w.symbol }}</span>
+                <app-sparkline [data]="w.sparkline" [width]="56" [height]="20" />
+              </div>
+              <app-price-display [price]="w.price" [change]="w.change ?? 0" [changePct]="w.change_pct ?? 0" size="sm" [inline]="true" />
+            </div>
+          }
+        </div>
+      }
+    </section>
+  </div>
+
+  <!-- ── Bottom Row: News + Quick Links + Global ─────────── -->
+  <div class="mo__row-3">
+    <!-- News / Alerts -->
+    <section class="mo__card mo__card--span-2">
+      <div class="mo__card-hdr">
+        <h3 class="mo__card-title">
+          <i class="bi bi-newspaper"></i> Alerts & Events
+        </h3>
+        <a routerLink="/news" class="mo__section-link">All News <i class="bi bi-arrow-right"></i></a>
+      </div>
+      @if (loadingNews) {
+        <app-loading-skeleton shape="table" [rows]="4" />
+      } @else if (news.length === 0) {
+        <app-empty-state icon="newspaper" title="No alerts" message="No recent alerts or events" [compact]="true" />
+      } @else {
+        <div class="mo__news-list">
+          @for (n of news; track $index) {
+            <div class="mo__news-row">
+              <div class="mo__news-left">
+                @if (n.sentiment === 'high' || n.sentiment === 'critical') {
+                  <span class="mo__news-dot mo__news-dot--danger"></span>
+                } @else if (n.sentiment === 'medium') {
+                  <span class="mo__news-dot mo__news-dot--warning"></span>
+                } @else {
+                  <span class="mo__news-dot mo__news-dot--info"></span>
+                }
+                <span class="mo__news-title">{{ n.title }}</span>
+              </div>
+              <span class="mo__news-source">{{ n.source }}</span>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- Quick Links + Global Placeholder -->
+    <section class="mo__card">
+      <h3 class="mo__card-title">Quick Actions</h3>
+      <div class="mo__quick-links">
+        <a routerLink="/chart" class="mo__qlink">
+          <i class="bi bi-graph-up"></i>
+          <span>Charts</span>
+        </a>
+        <a routerLink="/trading" class="mo__qlink">
+          <i class="bi bi-lightning-fill"></i>
+          <span>Trade</span>
+        </a>
+        <a routerLink="/signals" class="mo__qlink">
+          <i class="bi bi-bullseye"></i>
+          <span>Predictions</span>
+        </a>
+        <a routerLink="/portfolio" class="mo__qlink">
+          <i class="bi bi-pie-chart-fill"></i>
+          <span>Portfolio</span>
+        </a>
+        <a routerLink="/options" class="mo__qlink">
+          <i class="bi bi-layers-fill"></i>
+          <span>Options</span>
+        </a>
+        <a routerLink="/bot" class="mo__qlink">
+          <i class="bi bi-robot"></i>
+          <span>Bot</span>
+        </a>
+      </div>
+
+      <h3 class="mo__card-title mt-3">Global Markets</h3>
+      <div class="mo__global-placeholder">
+        <i class="bi bi-globe2"></i>
+        <span>International market data coming soon</span>
+      </div>
+    </section>
+  </div>
+
+</div>

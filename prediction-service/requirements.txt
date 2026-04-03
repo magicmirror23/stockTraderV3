@@ -1,0 +1,45 @@
+# Prediction Service Dependencies
+
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Database
+sqlalchemy>=2.0.0
+aiosqlite>=0.19.0
+asyncpg>=0.29.0
+
+# Data Processing
+pandas>=2.1.0
+numpy>=1.26.0
+
+# ML
+scikit-learn>=1.4.0
+lightgbm>=4.2.0
+xgboost>=2.0.0
+joblib>=1.3.0
+
+# Market Data
+yfinance>=0.2.36
+httpx>=0.27.0
+
+# Angel One (optional)
+smartapi-python>=1.4.0
+pyotp>=2.9.0
+
+# Monitoring
+prometheus-client>=0.20.0
+
+# Caching (optional)
+redis>=5.0.0
+
+# Testing
+pytest>=8.0.0
+anyio>=4.0.0
+pytest-anyio>=0.0.0
+httpx>=0.27.0
+
+# Explainability (optional)
+# shap>=0.44.0
+# torch>=2.2.0  # for LSTM/GRU models

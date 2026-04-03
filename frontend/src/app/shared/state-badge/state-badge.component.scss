@@ -1,0 +1,77 @@
+@use '../../../variables' as *;
+
+.state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 600;
+  border-radius: 999px;
+  white-space: nowrap;
+  line-height: 1;
+
+  &--upper {
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  // ------ Sizes ------
+  &--xs {
+    font-size: 0.625rem;
+    padding: 0.15rem 0.4rem;
+  }
+  &--sm {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.55rem;
+  }
+  &--md {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.65rem;
+  }
+
+  // ------ Dot ------
+  &__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  // ------ Variants ------
+  &.badge--buy {
+    background: rgba($color-buy, 0.12);
+    color: $color-buy;
+  }
+  &.badge--sell {
+    background: rgba($color-sell, 0.12);
+    color: $color-sell;
+  }
+  &.badge--hold {
+    background: rgba($color-hold, 0.1);
+    color: $color-hold;
+  }
+  &.badge--success {
+    background: rgba($success, 0.12);
+    color: $success;
+  }
+  &.badge--warning {
+    background: rgba($warning, 0.12);
+    color: darken($warning, 8%);
+  }
+  &.badge--danger {
+    background: rgba($danger, 0.12);
+    color: $danger;
+  }
+  &.badge--info {
+    background: rgba($info, 0.12);
+    color: $info;
+  }
+  &.badge--running {
+    background: rgba($primary, 0.12);
+    color: $primary;
+  }
+  &.badge--neutral {
+    background: rgba(#757575, 0.1);
+    color: #757575;
+  }
+}

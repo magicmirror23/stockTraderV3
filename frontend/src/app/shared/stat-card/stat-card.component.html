@@ -1,0 +1,19 @@
+<div class="stat-card card h-100" [class.stat-card--muted]="muted">
+  <div class="card-body p-3">
+    <div class="d-flex align-items-start justify-content-between">
+      <span class="stat-card__label">{{ label }}</span>
+      @if (icon) {
+        <i class="bi stat-card__icon" [ngClass]="'bi-' + icon"></i>
+      }
+    </div>
+
+    <div class="stat-card__value text-mono">{{ value }}</div>
+
+    @if (delta !== undefined && delta !== null) {
+      <div class="stat-card__delta" [ngClass]="trendClass">
+        <i class="bi" [ngClass]="trendIcon"></i>
+        <span>{{ delta }}{{ deltaSuffix }}</span>
+      </div>
+    }
+  </div>
+</div>

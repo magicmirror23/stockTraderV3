@@ -1,0 +1,13 @@
+<div class="ticker-tape" [class.ticker-tape--pause]="pauseOnHover">
+  <div class="ticker-tape__track" [style.animationDuration]="animDuration">
+    @for (item of displayItems; track item.symbol + $index) {
+      <span class="ticker-tape__item" [ngClass]="'ticker-tape__item--' + direction(item)">
+        <span class="ticker-tape__symbol">{{ item.symbol }}</span>
+        <span class="ticker-tape__price text-mono">{{ item.price | number:'1.2-2' }}</span>
+        <span class="ticker-tape__change text-mono">
+          {{ arrow(item) }} {{ item.changePct | number:'1.2-2' }}%
+        </span>
+      </span>
+    }
+  </div>
+</div>

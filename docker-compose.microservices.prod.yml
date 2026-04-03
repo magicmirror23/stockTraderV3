@@ -1,0 +1,166 @@
+version: "3.9"
+
+services:
+  # ── API Gateway (Port 8000) ──────────────────────────────────────────────
+  gateway:
+    image: ${DOCKER_REGISTRY:-local}/stocktrader-api:${IMAGE_TAG:-latest}
+    container_name: stocktrader-gateway
+    restart: always
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - MARKET_DATA_URL=http://market-data:8001
+      - PREDICTION_URL=http://prediction:8002
+      - TRADING_URL=http://trading:8003
+      - ADMIN_URL=http://admin:8004
+    depends_on:
+      - market-data
+      - prediction
+      - trading
+      - admin
+    command: >
+      uvicorn backend.api.services.gateway:app --host 0.0.0.0 --port 8000 --workers 2
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── Market Data Service (Port 8001) ──────────────────────────────────────
+  market-data:
+    image: ${DOCKER_REGISTRY:-local}/stocktrader-api:${IMAGE_TAG:-latest}
+    container_name: stocktrader-market-data
+    restart: always
+    env_file:
+      - .env
+    command: >
+      uvicorn backend.api.services.market_data:app --host 0.0.0.0 --port 8001 --workers 2
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ── Prediction / ML Service (Port 8002) ──────────────────────────────────
+  prediction:
+    image: ${DOCKER_REGISTRY:-local}/stocktrader-api:${IMAGE_TAG:-latest}
+    container_name: stocktrader-prediction
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      uvicorn backend.api.services.prediction:app --host 0.0.0.0 --port 8002 --workers 4
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── Trading Service (Port 8003) ──────────────────────────────────────────
+  trading:
+    image: ${DOCKER_REGISTRY:-local}/stocktrader-api:${IMAGE_TAG:-latest}
+    container_name: stocktrader-trading
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      uvicorn backend.api.services.trading:app --host 0.0.0.0 --port 8003
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ── Admin / Backtest Service (Port 8004) ─────────────────────────────────
+  admin:
+    image: ${DOCKER_REGISTRY:-local}/stocktrader-api:${IMAGE_TAG:-latest}
+    container_name: stocktrader-admin
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      uvicorn backend.api.services.admin_backtest:app --host 0.0.0.0 --port 8004 --workers 2
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── Infrastructure ───────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: stocktrader-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: stocktrader-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

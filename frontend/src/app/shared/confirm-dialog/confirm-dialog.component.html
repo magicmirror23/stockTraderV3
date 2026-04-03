@@ -1,0 +1,50 @@
+@if (open) {
+  <div
+    class="confirm-dialog__backdrop"
+    (click)="onBackdropClick($event)"
+    (keydown)="onKeyDown($event)"
+    tabindex="-1"
+  >
+    <div class="confirm-dialog" role="dialog" aria-modal="true">
+      <!-- Header -->
+      <div class="confirm-dialog__header">
+        <div class="confirm-dialog__icon" [ngClass]="'confirm-dialog__icon--' + severity">
+          <i class="bi" [ngClass]="severityIcon"></i>
+        </div>
+        <h3 class="confirm-dialog__title">{{ title }}</h3>
+      </div>
+
+      <!-- Body -->
+      <div class="confirm-dialog__body">
+        <p class="confirm-dialog__message">{{ message }}</p>
+      </div>
+
+      <!-- Footer -->
+      <div class="confirm-dialog__footer">
+        <button
+          type="button"
+          class="confirm-dialog__btn btn--cancel"
+          (click)="onCancel()"
+          [disabled]="loading"
+        >
+          {{ cancelLabel }}
+        </button>
+        <button
+          type="button"
+          class="confirm-dialog__btn"
+          [ngClass]="confirmBtnClass"
+          (click)="onConfirm()"
+          [disabled]="loading"
+        >
+          @if (loading) {
+            <span class="confirm-dialog__spinner"></span>
+          }
+          @if (confirmIcon && !loading) {
+            <i class="bi" [ngClass]="'bi-' + confirmIcon"></i>
+          }
+          {{ confirmLabel }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

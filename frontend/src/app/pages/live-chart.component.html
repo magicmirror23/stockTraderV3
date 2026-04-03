@@ -1,0 +1,279 @@
+<div class="cv" [class.cv--collapsed]="sidePanelCollapsed">
+
+  <!-- ════════════════════════════════════════════════════════
+       TOOLBAR
+       ════════════════════════════════════════════════════════ -->
+  <header class="cv__toolbar">
+    <!-- Symbol Search -->
+    <div class="cv__search">
+      <app-symbol-search
+        #symbolSearch
+        placeholder="Search symbol…"
+        (symbolSelect)="onSymbolSelect($event)"
+      />
+    </div>
+
+    <!-- Instrument Header -->
+    <div class="cv__instrument">
+      <span class="cv__symbol">{{ symbol }}</span>
+      @if (lastPrice) {
+        <app-price-display
+          [price]="lastPrice"
+          [change]="priceChange"
+          [changePct]="priceChangePct"
+          size="lg"
+          [inline]="true"
+        />
+      }
+    </div>
+
+    <!-- Badges -->
+    <div class="cv__badges">
+      <app-state-badge [variant]="sessionBadge" [label]="sessionLabel" [dot]="true" size="sm" />
+      <app-state-badge [variant]="feedBadge" [label]="feedLabel" [dot]="true" size="sm" />
+      @if (streaming) {
+        <span class="cv__tick-count text-muted">{{ tickCount }} ticks</span>
+      }
+    </div>
+
+    <!-- Actions -->
+    <div class="cv__toolbar-actions">
+      @if (!streaming) {
+        <button class="btn btn-sm btn-outline-primary" (click)="startStream()">
+          <i class="bi bi-play-fill"></i> Connect
+        </button>
+      } @else {
+        <button class="btn btn-sm btn-outline-danger" (click)="stopStream()">
+          <i class="bi bi-stop-fill"></i> Stop
+        </button>
+      }
+      <button
+        class="btn btn-sm"
+        [class.btn-success]="feedMode !== 'live'"
+        [class.btn-outline-success]="feedMode === 'live'"
+        (click)="connectLive()"
+        [disabled]="connectingLive || feedMode === 'live'"
+      >
+        <i class="bi bi-lightning-charge-fill"></i>
+        {{ connectingLive ? '…' : 'Live' }}
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" (click)="toggleSidePanel()" title="Toggle side panel">
+        <i class="bi" [class.bi-layout-sidebar-reverse]="!sidePanelCollapsed" [class.bi-layout-sidebar]="sidePanelCollapsed"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════════════
+       MAIN LAYOUT: chart area + side panel
+       ════════════════════════════════════════════════════════ -->
+  <div class="cv__body">
+
+    <!-- ── Chart Column ── -->
+    <main class="cv__chart-col">
+
+      <!-- Chart Controls Bar -->
+      <div class="cv__controls">
+        <!-- Timeframes -->
+        <div class="cv__tf-group">
+          @for (tf of timeframes; track tf) {
+            <button
+              class="cv__tf-btn"
+              [class.cv__tf-btn--active]="activeTimeframe === tf"
+              (click)="setTimeframe(tf)"
+            >{{ tf }}</button>
+          }
+        </div>
+
+        <!-- Chart Mode Toggle -->
+        <div class="cv__mode-group">
+          <button
+            class="cv__mode-btn"
+            [class.cv__mode-btn--active]="chartMode === 'line'"
+            (click)="setChartMode('line')"
+            title="Line chart"
+          ><i class="bi bi-graph-up"></i></button>
+          <button
+            class="cv__mode-btn"
+            [class.cv__mode-btn--active]="chartMode === 'candlestick'"
+            (click)="setChartMode('candlestick')"
+            title="Candlestick chart"
+          ><i class="bi bi-bar-chart-line"></i></button>
+          <button
+            class="cv__mode-btn"
+            [class.cv__mode-btn--active]="chartMode === 'area'"
+            (click)="setChartMode('area')"
+            title="Area chart"
+          ><i class="bi bi-graph-down"></i></button>
+        </div>
+
+        <!-- Crosshair Read -->
+        @if (crosshairPrice !== null) {
+          <div class="cv__crosshair-read font-mono">
+            {{ crosshairPrice | number:'1.2-2' }}
+          </div>
+        }
+      </div>
+
+      <!-- Chart Container -->
+      <div class="cv__chart-wrap">
+        @if (loading) {
+          <app-loading-skeleton shape="chart" />
+        } @else if (error) {
+          <app-empty-state
+            icon="bi-exclamation-triangle"
+            [title]="error"
+            message="Check the symbol or your connection and try again."
+            actionLabel="Retry"
+            (action)="loadSymbol(symbol)"
+          />
+        } @else if (lineData.length === 0 && ohlcData.length === 0) {
+          <app-empty-state
+            icon="bi-graph-up"
+            title="Waiting for data"
+            message="Price data will appear as ticks stream in."
+            [compact]="true"
+          />
+        } @else {
+          <app-trading-chart
+            #tradingChart
+            [mode]="chartMode"
+            [lineData]="lineData"
+            [ohlcData]="ohlcData"
+            [volumeData]="volumeData"
+            [height]="chartHeight"
+            [showVolume]="true"
+            [showCrosshair]="true"
+            [autoFit]="false"
+            (crosshairMove)="onCrosshairMove($event)"
+          />
+        }
+      </div>
+
+      <!-- OHLC Summary Bar -->
+      <div class="cv__ohlc-bar">
+        <div class="cv__ohlc-item">
+          <span class="cv__ohlc-label">O</span>
+          <span class="cv__ohlc-value font-mono">{{ ohlc.open | number:'1.2-2' }}</span>
+        </div>
+        <div class="cv__ohlc-item">
+          <span class="cv__ohlc-label">H</span>
+          <span class="cv__ohlc-value font-mono text-success">{{ ohlc.high | number:'1.2-2' }}</span>
+        </div>
+        <div class="cv__ohlc-item">
+          <span class="cv__ohlc-label">L</span>
+          <span class="cv__ohlc-value font-mono text-danger">{{ ohlc.low | number:'1.2-2' }}</span>
+        </div>
+        <div class="cv__ohlc-item">
+          <span class="cv__ohlc-label">C</span>
+          <span class="cv__ohlc-value font-mono">{{ ohlc.close | number:'1.2-2' }}</span>
+        </div>
+        <div class="cv__ohlc-item">
+          <span class="cv__ohlc-label">Vol</span>
+          <span class="cv__ohlc-value font-mono">{{ ohlc.volume | number }}</span>
+        </div>
+        @if (ohlc.prevClose) {
+          <div class="cv__ohlc-item">
+            <span class="cv__ohlc-label">Prev</span>
+            <span class="cv__ohlc-value font-mono">{{ ohlc.prevClose | number:'1.2-2' }}</span>
+          </div>
+        }
+      </div>
+
+      <!-- Technical Summary Placeholder -->
+      <section class="cv__card cv__technicals">
+        <div class="cv__card-head">
+          <h3 class="cv__card-title"><i class="bi bi-activity"></i> Technical Summary</h3>
+        </div>
+        <div class="cv__card-body">
+          <app-empty-state
+            icon="bi-activity"
+            title="Coming soon"
+            message="RSI, MACD, Bollinger Bands and other indicators will be displayed here."
+            [compact]="true"
+          />
+        </div>
+      </section>
+    </main>
+
+    <!-- ── Side Panel ── -->
+    @if (!sidePanelCollapsed) {
+      <aside class="cv__side">
+
+        <!-- Quick Order Entry -->
+        <section class="cv__card cv__order-panel">
+          <div class="cv__card-head">
+            <h3 class="cv__card-title"><i class="bi bi-lightning-charge"></i> Quick Order</h3>
+          </div>
+          <div class="cv__card-body cv__card-body--tight">
+            <app-order-form
+              [config]="orderConfig"
+              (submitOrder)="onOrderSubmit($event)"
+            />
+          </div>
+        </section>
+
+        <!-- Compact Watchlist -->
+        <section class="cv__card cv__watchlist">
+          <div class="cv__card-head">
+            <h3 class="cv__card-title"><i class="bi bi-bookmark-star"></i> Watchlist</h3>
+          </div>
+          <div class="cv__card-body cv__card-body--tight">
+            @if (watchlist.length === 0) {
+              <app-empty-state
+                icon="bi-bookmark-star"
+                title="No watchlist data"
+                message="Symbols will populate when feed is active."
+                [compact]="true"
+              />
+            } @else {
+              @for (item of watchlist; track trackBySymbol($index, item)) {
+                <div class="cv__wl-row" (click)="navigateSymbol(item.symbol)">
+                  <span class="cv__wl-symbol">{{ item.symbol }}</span>
+                  <div class="cv__wl-price-col">
+                    <span class="cv__wl-price font-mono">{{ item.price | number:'1.2-2' }}</span>
+                    <span
+                      class="cv__wl-change font-mono"
+                      [class.text-success]="item.change >= 0"
+                      [class.text-danger]="item.change < 0"
+                    >{{ item.changePct | number:'1.2-2' }}%</span>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </section>
+
+        <!-- Market News Placeholder -->
+        <section class="cv__card cv__news-panel">
+          <div class="cv__card-head">
+            <h3 class="cv__card-title"><i class="bi bi-newspaper"></i> News</h3>
+          </div>
+          <div class="cv__card-body">
+            <app-empty-state
+              icon="bi-newspaper"
+              title="News feed"
+              message="Symbol-specific news and alerts will appear here."
+              [compact]="true"
+            />
+          </div>
+        </section>
+
+        <!-- Predictions Placeholder -->
+        <section class="cv__card">
+          <div class="cv__card-head">
+            <h3 class="cv__card-title"><i class="bi bi-bullseye"></i> Predictions</h3>
+          </div>
+          <div class="cv__card-body">
+            <app-empty-state
+              icon="bi-bullseye"
+              title="ML predictions"
+              message="Model signals and confidence scores will display here."
+              [compact]="true"
+            />
+          </div>
+        </section>
+
+      </aside>
+    }
+  </div>
+</div>

@@ -1,0 +1,89 @@
+@use '../../variables' as *;
+
+$sidebar-width:     240px;
+$sidebar-collapsed:  56px;
+$topbar-height:      48px;
+$footer-height:      28px;
+
+// ── Full viewport shell ──
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: $body-bg;
+}
+
+// ── Body = sidebar + content area ──
+.shell-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+// ── Sidebar wrapper ──
+.shell-sidebar {
+  width: $sidebar-width;
+  flex-shrink: 0;
+  transition: width 0.2s ease;
+
+  &.sidebar-collapsed {
+    width: $sidebar-collapsed;
+  }
+
+  // Mobile: off-screen by default, overlaid when open
+  @media (max-width: 991.98px) {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: $sidebar-width;
+    z-index: 1030;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+
+    &.sidebar-mobile-open {
+      transform: translateX(0);
+    }
+
+    // Never collapse on mobile — always full width when visible
+    &.sidebar-collapsed {
+      width: $sidebar-width;
+    }
+  }
+}
+
+// ── Content column ──
+.shell-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0; // prevent flex blowout
+  overflow: hidden;
+}
+
+// ── Scrollable page area ──
+.shell-page {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+// ── Mobile overlay ──
+.shell-backdrop {
+  display: none;
+
+  @media (max-width: 991.98px) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1029;
+    background: rgba(0, 0, 0, 0.35);
+    animation: fadeIn 0.2s ease;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

@@ -1,0 +1,310 @@
+@use '../../variables' as *;
+
+// ── Layout Shell ────────────────────────────────────────────
+
+.cv {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 56px); // full height minus top bar
+  overflow: hidden;
+}
+
+// ── Toolbar ─────────────────────────────────────────────────
+
+.cv__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--bs-border-color, $border-color);
+  background: var(--bs-body-bg, #fff);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  min-height: 44px;
+}
+
+.cv__search {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.cv__instrument {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.cv__symbol {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: $font-family-monospace;
+  letter-spacing: 0.02em;
+}
+
+.cv__badges {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cv__tick-count {
+  font-size: 0.7rem;
+  font-family: $font-family-monospace;
+}
+
+.cv__toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+// ── Body: chart + side panel ────────────────────────────────
+
+.cv__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+// ── Chart Column ────────────────────────────────────────────
+
+.cv__chart-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+// ── Chart Controls ──────────────────────────────────────────
+
+.cv__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.3rem 0.75rem;
+  border-bottom: 1px solid var(--bs-border-color, $border-color);
+  background: var(--bs-body-bg, #fff);
+  flex-shrink: 0;
+}
+
+.cv__tf-group,
+.cv__mode-group {
+  display: flex;
+  gap: 1px;
+  background: var(--bs-border-color, $border-color);
+  border-radius: $border-radius-sm;
+  overflow: hidden;
+}
+
+.cv__tf-btn,
+.cv__mode-btn {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: $font-family-monospace;
+  border: none;
+  background: var(--bs-body-bg, #fff);
+  color: var(--bs-secondary-color, #6c757d);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  line-height: 1.3;
+
+  &:hover { background: rgba(0, 0, 0, 0.04); }
+
+  &--active {
+    background: $primary;
+    color: #fff;
+    &:hover { background: darken($primary, 6%); }
+  }
+}
+
+.cv__mode-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  i { display: block; }
+}
+
+.cv__crosshair-read {
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color, #6c757d);
+  margin-left: auto;
+}
+
+// ── Chart Container ─────────────────────────────────────────
+
+.cv__chart-wrap {
+  flex: 1;
+  min-height: 300px;
+  position: relative;
+  background: var(--bs-body-bg, #fff);
+  border-bottom: 1px solid var(--bs-border-color, $border-color);
+}
+
+// ── OHLC Bar ────────────────────────────────────────────────
+
+.cv__ohlc-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.35rem 0.75rem;
+  border-bottom: 1px solid var(--bs-border-color, $border-color);
+  background: var(--bs-body-bg, #fff);
+  flex-shrink: 0;
+}
+
+.cv__ohlc-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+}
+
+.cv__ohlc-label {
+  font-weight: 600;
+  color: var(--bs-secondary-color, #6c757d);
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+}
+
+.cv__ohlc-value {
+  font-weight: 500;
+}
+
+// ── Cards (technicals, etc.) ────────────────────────────────
+
+.cv__card {
+  background: var(--bs-body-bg, #fff);
+  border-bottom: 1px solid var(--bs-border-color, $border-color);
+
+  &:last-child { border-bottom: none; }
+}
+
+.cv__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.06));
+}
+
+.cv__card-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--bs-secondary-color, #6c757d);
+
+  i {
+    margin-right: 0.35rem;
+    opacity: 0.6;
+  }
+}
+
+.cv__card-body {
+  padding: 0.75rem;
+
+  &--tight { padding: 0.5rem; }
+}
+
+// ── Side Panel ──────────────────────────────────────────────
+
+.cv__side {
+  width: 300px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--bs-border-color, $border-color);
+  background: var(--bs-body-bg, #fff);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.cv--collapsed .cv__side {
+  display: none;
+}
+
+// ── Watchlist ───────────────────────────────────────────────
+
+.cv__wl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.35rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.06));
+  cursor: pointer;
+  transition: background 0.1s;
+
+  &:hover { background: rgba(0, 0, 0, 0.02); }
+  &:last-child { border-bottom: none; }
+}
+
+.cv__wl-symbol {
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: $font-family-monospace;
+}
+
+.cv__wl-price-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.cv__wl-price {
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.cv__wl-change {
+  font-size: 0.68rem;
+}
+
+// ── Utility ─────────────────────────────────────────────────
+
+.font-mono { font-family: $font-family-monospace; }
+.text-success { color: $success; }
+.text-danger  { color: $danger; }
+.text-muted   { color: var(--bs-secondary-color, #6c757d); }
+
+// ── Responsive ──────────────────────────────────────────────
+
+@media (max-width: 1024px) {
+  .cv__side { width: 260px; }
+  .cv__search { width: 160px; }
+}
+
+@media (max-width: 768px) {
+  .cv {
+    height: auto;
+    overflow: visible;
+  }
+
+  .cv__body {
+    flex-direction: column;
+  }
+
+  .cv__side {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--bs-border-color, $border-color);
+    max-height: 400px;
+  }
+
+  .cv__toolbar {
+    gap: 0.4rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .cv__search { width: 140px; }
+  .cv__symbol { font-size: 0.95rem; }
+}
+
+@media (max-width: 576px) {
+  .cv__badges { display: none; }
+  .cv__search { width: 120px; }
+}

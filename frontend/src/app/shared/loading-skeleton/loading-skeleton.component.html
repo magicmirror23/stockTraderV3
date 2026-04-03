@@ -1,0 +1,43 @@
+@for (item of items; track item) {
+  @switch (shape) {
+    @case ('card') {
+      <div class="skel skel-card" [style.height]="height" [style.width]="width">
+        <div class="skel-line skel-line--short"></div>
+        <div class="skel-line skel-line--wide"></div>
+        <div class="skel-line skel-line--medium"></div>
+      </div>
+    }
+    @case ('row') {
+      <div class="skel skel-row" [style.height]="height" [style.width]="width"></div>
+    }
+    @case ('text') {
+      <div class="skel skel-text-group" [style.width]="width">
+        <div class="skel-line skel-line--wide"></div>
+        <div class="skel-line skel-line--medium"></div>
+        <div class="skel-line skel-line--short"></div>
+      </div>
+    }
+    @case ('chart') {
+      <div class="skel skel-chart" [style.height]="height || '180px'" [style.width]="width"></div>
+    }
+    @case ('circle') {
+      <div class="skel skel-circle" [style.height]="height || '48px'" [style.width]="width || '48px'"></div>
+    }
+    @case ('table') {
+      <div class="skel skel-table" [style.width]="width">
+        <div class="skel-table__header">
+          @for (col of tableCols; track col) {
+            <div class="skel-line skel-line--cell"></div>
+          }
+        </div>
+        @for (row of tableRows; track row) {
+          <div class="skel-table__row">
+            @for (col of tableCols; track col) {
+              <div class="skel-line skel-line--cell"></div>
+            }
+          </div>
+        }
+      </div>
+    }
+  }
+}
