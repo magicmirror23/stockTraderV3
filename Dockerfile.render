@@ -1,0 +1,30 @@
+# Render deployment – backend API only (frontend served by Vercel)
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY backend/ ./backend/
+COPY scripts/ ./scripts/
+COPY storage/ ./storage/
+
+# Create runtime directories
+RUN mkdir -p logs storage/raw storage/runtime
+
+EXPOSE 8000
+
+# Gunicorn with multiple Uvicorn workers — if one worker is busy/stuck,
+# other workers keep handling requests independently.
+# WEB_CONCURRENCY env var overrides the default 2 workers.
+CMD ["gunicorn", "backend.api.main:app", \
+     "-k", "uvicorn.workers.UvicornWorker", \
+     "-w", "2", \
+     "--bind", "0.0.0.0:8000", \
+     "--timeout", "120", \
+     "--graceful-timeout", "30", \
+     "--access-logfile", "-"]

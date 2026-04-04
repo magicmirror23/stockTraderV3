@@ -9,13 +9,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from backend.api.services.base import create_service_app
-from backend.api.routers import trade, paper, bot
+from backend.api.routers import trade, paper, bot, risk, portfolio, options, execution, orchestrator
 
 app = create_service_app(title="StockTrader – Trading Service")
 
 app.include_router(trade.router, prefix="/api/v1")
 app.include_router(paper.router, prefix="/api/v1")
 app.include_router(bot.router, prefix="/api/v1")
+app.include_router(risk.router, prefix="/api/v1")
+app.include_router(portfolio.router, prefix="/api/v1")
+app.include_router(options.router, prefix="/api/v1")
+app.include_router(execution.router, prefix="/api/v1")
+app.include_router(orchestrator.router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")

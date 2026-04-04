@@ -78,6 +78,12 @@ def _resolve_upstream(path: str) -> str | None:
         return PREDICTION_URL
     if p.startswith("api/v1/model/"):
         return PREDICTION_URL
+    if p.startswith("api/v1/regime") or p.startswith("api/v1/strategy/"):
+        return PREDICTION_URL
+    if p.startswith("api/v1/sentiment/") or p.startswith("api/v1/news/"):
+        return PREDICTION_URL
+    if p.startswith("api/v1/anomaly/"):
+        return PREDICTION_URL
 
     # Trading Service
     if p.startswith("api/v1/trade_intent") or p.startswith("api/v1/execute"):
@@ -86,6 +92,14 @@ def _resolve_upstream(path: str) -> str | None:
         return TRADING_URL
     if p.startswith("api/v1/bot/") or p.startswith("api/v1/bot"):
         return TRADING_URL
+    if p.startswith("api/v1/risk/") or p.startswith("api/v1/portfolio/"):
+        return TRADING_URL
+    if p.startswith("api/v1/options/"):
+        return TRADING_URL
+    if p.startswith("api/v1/execution/"):
+        return TRADING_URL
+    if p.startswith("api/v1/orchestrator/"):
+        return TRADING_URL
 
     # Admin / Backtest Service
     if p.startswith("api/v1/retrain") or p.startswith("api/v1/backtest"):
@@ -93,6 +107,8 @@ def _resolve_upstream(path: str) -> str | None:
     if p.startswith("api/v1/metrics") or p.startswith("api/v1/registry/"):
         return ADMIN_URL
     if p.startswith("api/v1/drift/") or p.startswith("api/v1/canary/"):
+        return ADMIN_URL
+    if p.startswith("api/v1/log"):
         return ADMIN_URL
 
     return None

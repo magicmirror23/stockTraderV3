@@ -9,12 +9,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from backend.api.services.base import create_service_app
-from backend.api.routers import admin, backtest
+from backend.api.routers import admin, backtest, log
 
 app = create_service_app(title="StockTrader – Admin & Backtest Service")
 
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(backtest.router, prefix="/api/v1")
+app.include_router(log.router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")

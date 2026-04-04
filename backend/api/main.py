@@ -43,10 +43,26 @@ from backend.api.routers import (
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     """Startup / shutdown lifecycle for the FastAPI application."""
-    import threading, logging
+    import threading, logging, tempfile
     _log = logging.getLogger("stocktrader.startup")
 
     def _init_data():
+        # Use a file lock so only one Gunicorn worker runs the download
+        lock_path = Path(tempfile.gettempdir()) / "stocktrader_init.lock"
+        try:
+            import sys
+            if sys.platform == "win32":
+                import msvcrt
+                lock_file = open(lock_path, "w")
+                msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                lock_file = open(lock_path, "w")
+                fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except (OSError, IOError):
+            _log.info("Another worker is handling data init — skipping.")
+            return
+
         try:
             from backend.services.data_downloader import (
                 get_all_symbols, refresh_all_symbols, start_background_refresh,

@@ -1,92 +1,150 @@
-# Render config
+# Render.com – Microservices deployment (frontend on Vercel)
+#
+# Architecture:
+#   Gateway (public) → Market Data, Prediction, Trading, Admin (internal)
+#   All services share one PostgreSQL database.
+#
+# After first deploy: update MARKET_DATA_URL / PREDICTION_URL / TRADING_URL / ADMIN_URL
+# with the actual Render URLs of each service, and set ALLOWED_ORIGINS to your Vercel URL.
+
 services:
-  # API Gateway
+  # ── API Gateway (public entry point) ──────────────────────────────
   - type: web
     name: stocktrader-gateway
     runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerCommand: uvicorn backend.api.services.gateway:app --host 0.0.0.0 --port 8000
+    dockerfilePath: ./Dockerfile.render
+    dockerCommand: >-
+      gunicorn backend.api.services.gateway:app
+      -k uvicorn.workers.UvicornWorker
+      -w 2 --bind 0.0.0.0:8000
+      --timeout 120 --graceful-timeout 30 --access-logfile -
     plan: free
     envVars:
+      - key: APP_ENV
+        value: production
       - key: ALLOWED_ORIGINS
-        value: "*"
+        value: "https://your-app.vercel.app"
       - key: MARKET_DATA_URL
         fromService:
           name: stocktrader-market-data
-          type: pserv
-          property: host
+          type: web
+          property: hostport
       - key: PREDICTION_URL
         fromService:
           name: stocktrader-prediction
-          type: pserv
-          property: host
+          type: web
+          property: hostport
       - key: TRADING_URL
         fromService:
           name: stocktrader-trading
-          type: pserv
-          property: host
+          type: web
+          property: hostport
       - key: ADMIN_URL
         fromService:
           name: stocktrader-admin
-          type: pserv
-          property: host
+          type: web
+          property: hostport
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stocktrader-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PAPER_MODE
+        value: "true"
+    healthCheckPath: /api/v1/health
+
+  # ── Market Data Service (streaming, prices, WebSocket) ────────────
+  - type: web
+    name: stocktrader-market-data
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    dockerCommand: >-
+      gunicorn backend.api.services.market_data:app
+      -k uvicorn.workers.UvicornWorker
+      -w 2 --bind 0.0.0.0:8000
+      --timeout 120 --graceful-timeout 30 --access-logfile -
+    plan: free
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: ALLOWED_ORIGINS
+        value: "https://your-app.vercel.app"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stocktrader-db
+          property: connectionString
+      - key: PAPER_MODE
+        value: "true"
+    healthCheckPath: /api/v1/health
+
+  # ── Prediction / ML Service ──────────────────────────────────────
+  - type: web
+    name: stocktrader-prediction
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    dockerCommand: >-
+      gunicorn backend.api.services.prediction:app
+      -k uvicorn.workers.UvicornWorker
+      -w 2 --bind 0.0.0.0:8000
+      --timeout 300 --graceful-timeout 30 --access-logfile -
+    plan: free
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: ALLOWED_ORIGINS
+        value: "https://your-app.vercel.app"
       - key: DATABASE_URL
         fromDatabase:
           name: stocktrader-db
           property: connectionString
     healthCheckPath: /api/v1/health
 
-  # Market Data Service (internal)
-  - type: pserv
-    name: stocktrader-market-data
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerCommand: uvicorn backend.api.services.market_data:app --host 0.0.0.0 --port 8001
-    plan: free
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: stocktrader-db
-          property: connectionString
-
-  # Prediction / ML Service (internal)
-  - type: pserv
-    name: stocktrader-prediction
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerCommand: uvicorn backend.api.services.prediction:app --host 0.0.0.0 --port 8002
-    plan: free
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: stocktrader-db
-          property: connectionString
-
-  # Trading Service (internal)
-  - type: pserv
+  # ── Trading Service (execution, paper trading, bot) ──────────────
+  - type: web
     name: stocktrader-trading
     runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerCommand: uvicorn backend.api.services.trading:app --host 0.0.0.0 --port 8003
+    dockerfilePath: ./Dockerfile.render
+    dockerCommand: >-
+      gunicorn backend.api.services.trading:app
+      -k uvicorn.workers.UvicornWorker
+      -w 2 --bind 0.0.0.0:8000
+      --timeout 120 --graceful-timeout 30 --access-logfile -
     plan: free
     envVars:
+      - key: APP_ENV
+        value: production
+      - key: ALLOWED_ORIGINS
+        value: "https://your-app.vercel.app"
       - key: DATABASE_URL
         fromDatabase:
           name: stocktrader-db
           property: connectionString
+      - key: PAPER_MODE
+        value: "true"
+    healthCheckPath: /api/v1/health
 
-  # Admin / Backtest Service (internal)
-  - type: pserv
+  # ── Admin & Backtest Service ─────────────────────────────────────
+  - type: web
     name: stocktrader-admin
     runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerCommand: uvicorn backend.api.services.admin_backtest:app --host 0.0.0.0 --port 8004
+    dockerfilePath: ./Dockerfile.render
+    dockerCommand: >-
+      gunicorn backend.api.services.admin_backtest:app
+      -k uvicorn.workers.UvicornWorker
+      -w 2 --bind 0.0.0.0:8000
+      --timeout 600 --graceful-timeout 30 --access-logfile -
     plan: free
     envVars:
+      - key: APP_ENV
+        value: production
+      - key: ALLOWED_ORIGINS
+        value: "https://your-app.vercel.app"
       - key: DATABASE_URL
         fromDatabase:
           name: stocktrader-db
           property: connectionString
+    healthCheckPath: /api/v1/health
 
 databases:
   - name: stocktrader-db

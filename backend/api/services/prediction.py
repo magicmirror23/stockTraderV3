@@ -9,12 +9,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from backend.api.services.base import create_service_app
-from backend.api.routers import predict, model
+from backend.api.routers import predict, model, strategy, intelligence
 
 app = create_service_app(title="StockTrader – Prediction Service")
 
 app.include_router(predict.router, prefix="/api/v1")
 app.include_router(model.router, prefix="/api/v1")
+app.include_router(strategy.router, prefix="/api/v1")
+app.include_router(intelligence.router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")
