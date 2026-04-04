@@ -23,7 +23,7 @@ import { LivePriceChartComponent, PriceTick } from '../components/live-price-cha
         <h1>Live Market Stream</h1>
         <div class="flex items-center gap-1">
           <span class="feed-badge" [ngClass]="feedMode === 'live' ? 'feed-live' : 'feed-replay'">
-            {{ feedMode === 'live' ? '? LIVE' : '? REPLAY' }}
+            {{ feedMode === 'live' ? 'LIVE' : 'REPLAY' }}
           </span>
           <span class="conn-dot" [ngClass]="connected ? 'dot-on' : 'dot-off'"></span>
           <span class="text-sm">{{ connected ? 'Streaming' : 'Disconnected' }}</span>
@@ -111,11 +111,11 @@ import { LivePriceChartComponent, PriceTick } from '../components/live-price-cha
           </div>
           <div class="form-group" style="justify-content:flex-end; gap:0.5rem; display:flex; align-items:flex-end; flex-wrap:wrap">
             <button class="btn-live" (click)="connectLiveFeed()" [disabled]="connectingLive || feedMode === 'live'">
-              {{ connectingLive ? 'Connecting...' : (feedMode === 'live' ? '🟢 AngelOne Live' : '🔌 Connect AngelOne') }}
+              {{ connectingLive ? 'Connecting...' : (feedMode === 'live' ? 'AngelOne Live' : 'Connect AngelOne') }}
             </button>
             <button class="btn-replay" (click)="disconnectLiveFeed()" *ngIf="feedMode === 'live'">Switch to Replay</button>
             <button class="btn-primary" (click)="startStream()" [disabled]="connected">
-              {{ connected ? '🟢 Streaming' : '▶ Start Stream' }}
+              {{ connected ? 'Streaming' : 'Start Stream' }}
             </button>
             <button class="btn-danger" (click)="stopStream()" *ngIf="connected">■ Stop</button>
             <button class="btn-secondary" (click)="loadSnapshot()" [disabled]="connected">Snapshot</button>

@@ -2,7 +2,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, Subject, BehaviorSubject } from 'rxjs';
-import { retry } from 'rxjs/operators';
+import { map, retry } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { LiveTick, FeedStatus, WatchlistItem, MarketOverview, CategoryInfo, MarketSnapshot } from '../core/models';
 import { WebsocketService, ManagedConnection } from '../core/services/websocket.service';
@@ -81,6 +81,12 @@ export class LiveStreamService implements OnDestroy {
   getMarketSnapshot(): Observable<MarketSnapshot> {
     return this.http.get<MarketSnapshot>(`${this.base}/stream/market-snapshot`).pipe(
       retry({ count: 2, delay: 1000 }),
+      map((snapshot) => ({
+        ...snapshot,
+        market_message: this.cleanText(snapshot.market_message ?? ''),
+        next_event: this.cleanText(snapshot.next_event ?? ''),
+        next_event_time: this.cleanText(snapshot.next_event_time ?? ''),
+      })),
     );
   }
 
@@ -124,5 +130,15 @@ export class LiveStreamService implements OnDestroy {
     this.conn?.disconnect();
     this.conn = null;
     this.connected$.next(false);
+  }
+
+  private cleanText(value: string): string {
+    return value
+      .replace(/â€“/g, '-')
+      .replace(/â€”/g, '-')
+      .replace(/â€˜|â€™/g, "'")
+      .replace(/â€œ|â€�/g, '"')
+      .replace(/Â/g, '')
+      .trim();
   }
 }

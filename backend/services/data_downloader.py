@@ -23,6 +23,10 @@ _YF_INDEX_MAP: dict[str, str] = {
 
 # Symbols that use .BO (BSE) instead of .NS
 _YF_BSE_SYMBOLS: set[str] = {"SENSEX"}
+_YF_SYMBOL_OVERRIDES: dict[str, str] = {
+    "BAJAJ_AUTO": "BAJAJ-AUTO",
+    "M_M": "M&M",
+}
 
 STORAGE_DIR = Path(__file__).resolve().parents[2] / "storage" / "raw"
 HISTORY_YEARS = 2  # download 2 years of daily data
@@ -33,8 +37,16 @@ def _yf_ticker(symbol: str) -> str:
     """Convert internal symbol name to yfinance ticker."""
     if symbol in _YF_INDEX_MAP:
         return _YF_INDEX_MAP[symbol]
-    # M&M style underscores -> hyphens for yfinance
-    clean = symbol.replace("_", "&")
+
+    clean = _YF_SYMBOL_OVERRIDES.get(symbol, symbol)
+    if "_" in clean:
+        parts = [p for p in clean.split("_") if p]
+        if parts:
+            if all(len(p) == 1 for p in parts):
+                clean = "&".join(parts)
+            else:
+                clean = "-".join(parts)
+
     if clean.endswith(".NS") or clean.endswith(".BO"):
         return clean
     return f"{clean}.NS"

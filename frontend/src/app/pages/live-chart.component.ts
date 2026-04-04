@@ -309,9 +309,13 @@ export class LiveChartComponent implements OnInit, OnDestroy {
   // ── Private ──
 
   private processTick(tick: PriceTick): void {
+    if (!tick || !tick.timestamp || typeof tick.price !== 'number' || !Number.isFinite(tick.price)) {
+      return;
+    }
+
     const now = tick.timestamp;
     const price = tick.price;
-    const vol = tick.volume;
+    const vol = typeof tick.volume === 'number' && Number.isFinite(tick.volume) ? tick.volume : 0;
 
     // Update instrument header
     this.lastPrice = price;

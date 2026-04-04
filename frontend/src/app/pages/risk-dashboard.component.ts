@@ -55,14 +55,18 @@ export class RiskDashboardComponent implements OnInit, OnDestroy {
   // ── Computed ──
   get statusCards(): StatCardConfig[] {
     if (!this.status) return [];
+    const capital = this.asNum(this.status.capital);
+    const usedCapital = this.asNum(this.status.used_capital);
+    const dailyPnl = this.asNum(this.status.daily_pnl);
+    const openPositions = this.asNum(this.status.open_positions);
     return [
-      { label: 'Capital', value: `₹${this.status.capital.toLocaleString()}`, icon: 'bank' },
-      { label: 'Used Capital', value: `₹${this.status.used_capital.toLocaleString()}`, icon: 'cash-coin' },
+      { label: 'Capital', value: `₹${capital.toLocaleString('en-IN')}`, icon: 'bank' },
+      { label: 'Used Capital', value: `₹${usedCapital.toLocaleString('en-IN')}`, icon: 'cash-coin' },
       {
-        label: 'Daily P&L', value: `₹${this.status.daily_pnl.toLocaleString()}`,
-        icon: 'graph-up-arrow', trend: this.status.daily_pnl >= 0 ? 'up' : 'down',
+        label: 'Daily P&L', value: `₹${dailyPnl.toLocaleString('en-IN')}`,
+        icon: 'graph-up-arrow', trend: dailyPnl >= 0 ? 'up' : 'down',
       },
-      { label: 'Open Positions', value: this.status.open_positions, icon: 'stack' },
+      { label: 'Open Positions', value: openPositions, icon: 'stack' },
     ];
   }
 
@@ -75,8 +79,11 @@ export class RiskDashboardComponent implements OnInit, OnDestroy {
   }
 
   get capitalUsedPct(): number {
-    if (!this.status || !this.status.capital) return 0;
-    return (this.status.used_capital / this.status.capital) * 100;
+    if (!this.status) return 0;
+    const capital = this.asNum(this.status.capital);
+    const used = this.asNum(this.status.used_capital);
+    if (!capital) return 0;
+    return (used / capital) * 100;
   }
 
   barClass(pct: number): string {
@@ -100,12 +107,16 @@ export class RiskDashboardComponent implements OnInit, OnDestroy {
         this.loadError = true;
       }
       this.sectorExposure = Object.entries(sector)
-        .map(([key, value]) => ({ key, value }))
+        .map(([key, value]) => ({ key, value: this.asNum(value) }))
         .sort((a, b) => b.value - a.value);
-      this.greeksEntries = Object.entries(greeks).map(([key, value]) => ({ key, value }));
+      this.greeksEntries = Object.entries(greeks).map(([key, value]) => ({ key, value: this.asNum(value) }));
       this.snapshots = snapshots;
       this.loading = false;
       this.cdr.markForCheck();
     });
+  }
+
+  private asNum(value: unknown): number {
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
   }
 }

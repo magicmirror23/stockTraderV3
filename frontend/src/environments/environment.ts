@@ -1,7 +1,7 @@
 export const environment = {
   production: false,
   apiBaseUrl: '/api/v1',
-  wsBaseUrl: `ws://${typeof window !== 'undefined' ? window.location.host : 'localhost:8000'}/api/v1`,
+  wsBaseUrl: `${typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss' : 'ws'}://${typeof window !== 'undefined' ? window.location.host : 'localhost:8000'}/api/v1`,
   enableMocks: false,
   enableDebugTools: true,
   marketTimezone: 'Asia/Kolkata',

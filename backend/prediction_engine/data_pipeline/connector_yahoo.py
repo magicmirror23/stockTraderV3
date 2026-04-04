@@ -27,6 +27,10 @@ class YahooConnector:
     """Fetches OHLCV data from Yahoo Finance."""
 
     REQUIRED_COLUMNS = ["Open", "High", "Low", "Close", "Volume"]
+    SYMBOL_OVERRIDES = {
+        "BAJAJ_AUTO": "BAJAJ-AUTO",
+        "M_M": "M&M",
+    }
 
     def __init__(self, nse_suffix: str = ".NS", max_retries: int = 3, retry_delay_s: float = 1.0) -> None:
         self._suffix = nse_suffix
@@ -35,9 +39,26 @@ class YahooConnector:
 
     def _yahoo_ticker(self, ticker: str) -> str:
         """Append exchange suffix if not already present."""
-        if not ticker.endswith(self._suffix):
-            return f"{ticker}{self._suffix}"
-        return ticker
+        if ticker.startswith("^"):
+            return ticker
+
+        base = ticker
+        if base.endswith(self._suffix):
+            base = base[: -len(self._suffix)]
+
+        if "." in base:
+            return ticker
+
+        base = self.SYMBOL_OVERRIDES.get(base, base)
+        if "_" in base:
+            parts = [p for p in base.split("_") if p]
+            if parts:
+                if all(len(p) == 1 for p in parts):
+                    base = "&".join(parts)
+                else:
+                    base = "-".join(parts)
+
+        return f"{base}{self._suffix}"
 
     def fetch(
         self,

@@ -34,11 +34,19 @@ export class WebsocketService {
    * @param sseUrl Optional SSE fallback URL (absolute or relative)
    */
   connect(path: string, sseUrl?: string): ManagedConnection {
+    const wsUrl = this.normalizeWsUrl(`${environment.wsBaseUrl}${path}`);
     return new ManagedConnection(
-      `${environment.wsBaseUrl}${path}`,
+      wsUrl,
       sseUrl ?? `${environment.apiBaseUrl}${path}`,
       this.ngZone,
     );
+  }
+
+  private normalizeWsUrl(url: string): string {
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && url.startsWith('ws://')) {
+      return `wss://${url.slice(5)}`;
+    }
+    return url;
   }
 }
 

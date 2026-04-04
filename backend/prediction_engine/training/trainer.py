@@ -49,7 +49,7 @@ def _ensure_data_available(tickers: list[str], data_dir: Path) -> list[str]:
     """
     data_dir.mkdir(parents=True, exist_ok=True)
     existing = {p.stem for p in data_dir.glob("*.csv")}
-    missing = [t for t in tickers if t not in existing]
+    missing = list(dict.fromkeys(t for t in tickers if t not in existing))
 
     if not missing:
         return tickers
@@ -177,16 +177,50 @@ def _walk_forward_split(
 ):
     """Time-series aware train / val / test split with purge gaps.
 
-    Purge gaps prevent look-ahead bias from rolling features leaking
-    future information into the next split.
+    Splits are computed on unique trading dates (not row indices) so
+    train/val/test are strictly separated in time across all tickers.
+    Purge gaps are applied in units of trading dates.
     """
-    n = len(df)
-    train_end = int(n * train_pct)
-    val_start = train_end + purge_gap
-    val_end = int(n * (train_pct + val_pct))
-    test_start = val_end + purge_gap
+    if df.empty:
+        raise ValueError("Cannot split empty dataframe.")
 
-    return df.iloc[:train_end], df.iloc[val_start:val_end], df.iloc[test_start:]
+    work = df.copy()
+    work["date"] = pd.to_datetime(work["date"])
+    sort_cols = ["date", "ticker"] if "ticker" in work.columns else ["date"]
+    work = work.sort_values(sort_cols).reset_index(drop=True)
+
+    unique_dates = pd.Index(work["date"].dropna().sort_values().unique())
+    n_dates = len(unique_dates)
+    if n_dates < 30:
+        raise ValueError(f"Not enough unique dates to split safely (got {n_dates}).")
+
+    train_end_idx = max(0, int(n_dates * train_pct) - 1)
+    val_start_idx = train_end_idx + 1 + purge_gap
+    val_end_idx = max(val_start_idx, int(n_dates * (train_pct + val_pct)) - 1)
+    test_start_idx = val_end_idx + 1 + purge_gap
+
+    if val_start_idx >= n_dates or test_start_idx >= n_dates:
+        raise ValueError(
+            "Split configuration leaves no room for validation/test. "
+            f"n_dates={n_dates}, train_pct={train_pct}, val_pct={val_pct}, purge_gap={purge_gap}"
+        )
+
+    train_end_date = unique_dates[train_end_idx]
+    val_start_date = unique_dates[val_start_idx]
+    val_end_date = unique_dates[val_end_idx]
+    test_start_date = unique_dates[test_start_idx]
+
+    train_df = work[work["date"] <= train_end_date]
+    val_df = work[(work["date"] >= val_start_date) & (work["date"] <= val_end_date)]
+    test_df = work[work["date"] >= test_start_date]
+
+    if train_df.empty or val_df.empty or test_df.empty:
+        raise ValueError(
+            "One or more split datasets are empty "
+            f"(train={len(train_df)}, val={len(val_df)}, test={len(test_df)})."
+        )
+
+    return train_df.reset_index(drop=True), val_df.reset_index(drop=True), test_df.reset_index(drop=True)
 
 
 # ---------------------------------------------------------------------------
