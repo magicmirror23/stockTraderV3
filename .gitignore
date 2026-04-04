@@ -1,22 +1,42 @@
+# Gitignore
+
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual env
+.venv/
+venv/
+
+# Environment
+.env
+
+# SQLite dev database
+*.db
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
 docker-compose.override.yml
 
-# Ignore everything by default
-/*
+# pytest
+.pytest_cache/
 
-# Allow only frontend directory and its contents
-!frontend/
-!frontend/**
+# Coverage
+htmlcov/
+.coverage
 
-# Ignore frontend/node_modules and build outputs
-frontend/node_modules/
-frontend/dist/
-frontend/.angular/
-
-# Ignore OS/IDE files in frontend
-frontend/.DS_Store
-frontend/Thumbs.db
-frontend/.vscode/
-frontend/.idea/
+# Model artifacts (large binaries)
+models/artifacts/*/model.pkl
+models/artifacts/*/model.pt
+models/artifacts/*/gru_model.pt
 
 # Downloaded data
 storage/raw/*.csv
