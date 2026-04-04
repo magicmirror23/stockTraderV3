@@ -211,6 +211,7 @@ def verify_labels(
     label_col: str = "label",
     date_col: str = "date",
     horizon: int = 1,
+    require_tail_nan: bool = True,
 ) -> None:
     """Verify that labels are built from strictly future data.
 
@@ -219,24 +220,31 @@ def verify_labels(
        ticker — those rows have no future data to form a label.
     2. Labels should not be identical to any feature column
        (target contamination).
+
+    Parameters
+    ----------
+    require_tail_nan:
+        Set to ``False`` when validating already-truncated training splits
+        where tail rows without future labels have already been removed.
     """
     if label_col not in df.columns:
         raise LeakageError(f"Label column '{label_col}' not found.")
 
     # Check last-horizon rows per ticker
-    if "ticker" in df.columns:
-        groups = df.groupby("ticker")
-    else:
-        groups = [(None, df)]
+    if require_tail_nan:
+        if "ticker" in df.columns:
+            groups = df.groupby("ticker")
+        else:
+            groups = [(None, df)]
 
-    for name, group in groups:
-        tail = group.sort_values(date_col).tail(horizon)
-        non_nan_labels = tail[label_col].dropna()
-        if not non_nan_labels.empty:
-            raise LeakageError(
-                f"Ticker '{name}': last {horizon} rows have non-NaN labels. "
-                "Labels cannot exist without sufficient future data."
-            )
+        for name, group in groups:
+            tail = group.sort_values(date_col).tail(horizon)
+            non_nan_labels = tail[label_col].dropna()
+            if not non_nan_labels.empty:
+                raise LeakageError(
+                    f"Ticker '{name}': last {horizon} rows have non-NaN labels. "
+                    "Labels cannot exist without sufficient future data."
+                )
 
     # Target contamination check
     numeric = df.select_dtypes(include=[np.number])
@@ -342,11 +350,18 @@ def run_all_checks(
     label_col: str = "label",
     date_col: str = "date",
     horizon: int = 1,
+    require_tail_nan: bool = True,
 ) -> None:
     """Run the full suite of leakage checks.  Raises ``LeakageError``
     on the first violation detected."""
     verify_feature_timestamps(train_df, decision_time_col=date_col)
     verify_feature_timestamps(val_df, decision_time_col=date_col)
-    verify_labels(train_df, label_col=label_col, date_col=date_col, horizon=horizon)
+    verify_labels(
+        train_df,
+        label_col=label_col,
+        date_col=date_col,
+        horizon=horizon,
+        require_tail_nan=require_tail_nan,
+    )
     verify_no_future_normalisation(train_df, val_df, date_col=date_col)
     logger.info("All leakage checks passed.")

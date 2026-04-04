@@ -52,6 +52,11 @@ export const routes: Routes = [
 
       // Predictions
       {
+        path: 'signal-detail/:symbol',
+        loadComponent: () => import('./pages/signal-detail.component').then(m => m.SignalDetailComponent),
+        canActivate: [authGuard],
+      },
+      {
         path: 'signals',
         loadComponent: () => import('./pages/signal-explorer.component').then(m => m.SignalExplorerComponent),
         canActivate: [authGuard],
@@ -132,5 +137,5 @@ export const routes: Routes = [
   },
 
   // Fallback
-  { path: '**', redirectTo: '' },
+  { path: '**', loadComponent: () => import('./pages/not-found.component').then(m => m.NotFoundComponent) },
 ];

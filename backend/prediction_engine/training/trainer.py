@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -56,24 +57,44 @@ def _ensure_data_available(tickers: list[str], data_dir: Path) -> list[str]:
     logger.info("Downloading data for %d missing tickers...", len(missing))
     try:
         from backend.prediction_engine.data_pipeline.connector_yahoo import YahooConnector
-        connector = YahooConnector()
+        connector = YahooConnector(max_retries=3, retry_delay_s=1.5)
         end = datetime.now()
         start_date = end - timedelta(days=365)
 
         downloaded = 0
         for ticker in missing:
-            try:
-                path = connector.fetch_to_csv(ticker, start_date, end, data_dir)
-                # Validate the downloaded file has enough rows
-                df = pd.read_csv(path)
-                if len(df) >= 50:
-                    downloaded += 1
-                    logger.info("Downloaded %s (%d rows)", ticker, len(df))
-                else:
+            success = False
+            for attempt in range(1, 4):
+                try:
+                    path = connector.fetch_to_csv(ticker, start_date, end, data_dir)
+                    # Validate the downloaded file has enough rows
+                    df = pd.read_csv(path)
+                    if len(df) >= 50:
+                        downloaded += 1
+                        success = True
+                        logger.info("Downloaded %s (%d rows)", ticker, len(df))
+                        break
+
                     logger.warning("Skipping %s - only %d rows", ticker, len(df))
                     path.unlink(missing_ok=True)
-            except Exception as exc:
-                logger.warning("Failed to download %s: %s", ticker, exc)
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to download %s on attempt %d/3: %s",
+                        ticker,
+                        attempt,
+                        exc,
+                    )
+
+                if attempt < 3:
+                    backoff_s = 1.5 * attempt
+                    logger.info("Retrying %s in %.1fs", ticker, backoff_s)
+                    time.sleep(backoff_s)
+
+            if not success:
+                logger.warning("Unable to fetch usable data for %s after retries", ticker)
+
+            # Pace requests to reduce provider-side throttling.
+            time.sleep(0.4)
 
         logger.info("Downloaded %d/%d missing tickers", downloaded, len(missing))
     except ImportError:
@@ -233,6 +254,8 @@ def train(
     # Add labels
     features = features.copy()
     features["label"] = _build_labels(features, horizon=horizon)
+    features_with_tail = features.copy()
+
     features = features.dropna(subset=["label"]).reset_index(drop=True)
     features["label"] = features["label"].astype(int)
 
@@ -257,9 +280,31 @@ def train(
 
     # --- Leakage prevention checks ---
     try:
-        from backend.shared.leakage import run_all_checks
-        run_all_checks(train_df, val_df, label_col="label", date_col="date", horizon=horizon)
-        run_all_checks(val_df, test_df, label_col="label", date_col="date", horizon=horizon)
+        from backend.shared.leakage import run_all_checks, verify_labels
+        # Validate label construction on the full timeline before truncation.
+        verify_labels(
+            features_with_tail,
+            label_col="label",
+            date_col="date",
+            horizon=horizon,
+            require_tail_nan=True,
+        )
+        run_all_checks(
+            train_df,
+            val_df,
+            label_col="label",
+            date_col="date",
+            horizon=horizon,
+            require_tail_nan=False,
+        )
+        run_all_checks(
+            val_df,
+            test_df,
+            label_col="label",
+            date_col="date",
+            horizon=horizon,
+            require_tail_nan=False,
+        )
         logger.info("Leakage checks passed for train/val/test splits.")
     except Exception as exc:
         logger.error("Leakage check failed: %s", exc)

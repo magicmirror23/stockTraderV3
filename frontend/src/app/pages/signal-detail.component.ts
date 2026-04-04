@@ -2,18 +2,23 @@
 import { Component, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { PredictionApiService, Greeks, OptionSignal } from '../services/prediction-api.service';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { PredictionApiService, OptionSignal } from '../services/prediction-api.service';
 import { LivePriceChartComponent, PriceTick } from '../components/live-price-chart.component';
 import { PriceStreamService } from '../services/price-stream.service';
 import { Subscription } from 'rxjs';
+import { NotificationService } from '../services/notification.service';
 
 @Component({
   selector: 'app-signal-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, LivePriceChartComponent],
+  imports: [CommonModule, FormsModule, RouterLink, LivePriceChartComponent],
   template: `
     <div class="page">
-      <h1>Options Signal</h1>
+      <div class="flex justify-between items-center mb-2">
+        <h1>Options Signal</h1>
+        <a class="btn btn-sm btn-outline-secondary" [routerLink]="['/signals']">Back to Predictions</a>
+      </div>
 
       <div class="card mb-2">
         <h2>Option Parameters</h2>
@@ -115,15 +120,26 @@ export class SignalDetailComponent implements OnDestroy {
   loading = false;
   ticks: PriceTick[] = [];
   streamSub: Subscription | null = null;
+  private routeSub: Subscription | null = null;
 
   constructor(
+    private route: ActivatedRoute,
     private predictionApi: PredictionApiService,
-    private priceStream: PriceStreamService
+    private priceStream: PriceStreamService,
+    private notify: NotificationService,
   ) {
-    // Default expiry: next Thursday
-    const d = new Date();
-    d.setDate(d.getDate() + ((4 - d.getDay() + 7) % 7 || 7));
-    this.expiry = d.toISOString().slice(0, 10);
+    this.expiry = this.nextThursdayIso();
+
+    this.routeSub = this.route.paramMap.subscribe(params => {
+      const symbol = params.get('symbol')?.trim().toUpperCase();
+      if (!symbol) return;
+
+      this.underlying = symbol;
+      this.signal = null;
+      this.error = null;
+      this.fetchSignal();
+      this.startStream();
+    });
   }
 
   fetchSignal(): void {
@@ -131,7 +147,11 @@ export class SignalDetailComponent implements OnDestroy {
     this.loading = true;
     this.predictionApi.predictOptions(this.underlying, this.strike, this.expiry, this.optionType).subscribe({
       next: res => { this.signal = res.signal ?? (res as any); this.loading = false; },
-      error: () => { this.error = 'Failed to fetch signal'; this.loading = false; }
+      error: () => {
+        this.error = 'Failed to fetch signal';
+        this.loading = false;
+        this.notify.error('Failed to fetch options signal.');
+      }
     });
   }
 
@@ -149,6 +169,14 @@ export class SignalDetailComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.routeSub?.unsubscribe();
+    this.routeSub = null;
     this.stopStream();
+  }
+
+  private nextThursdayIso(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + ((4 - d.getDay() + 7) % 7 || 7));
+    return d.toISOString().slice(0, 10);
   }
 }

@@ -8,6 +8,7 @@ expected by Yahoo Finance.
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -27,8 +28,10 @@ class YahooConnector:
 
     REQUIRED_COLUMNS = ["Open", "High", "Low", "Close", "Volume"]
 
-    def __init__(self, nse_suffix: str = ".NS") -> None:
+    def __init__(self, nse_suffix: str = ".NS", max_retries: int = 3, retry_delay_s: float = 1.0) -> None:
         self._suffix = nse_suffix
+        self._max_retries = max(1, int(max_retries))
+        self._retry_delay_s = max(0.1, float(retry_delay_s))
 
     def _yahoo_ticker(self, ticker: str) -> str:
         """Append exchange suffix if not already present."""
@@ -65,7 +68,28 @@ class YahooConnector:
         # yfinance expects date strings in YYYY-MM-DD format, not full datetime
         start_str = start.strftime("%Y-%m-%d") if hasattr(start, 'strftime') else str(start)[:10]
         end_str = end.strftime("%Y-%m-%d") if hasattr(end, 'strftime') else str(end)[:10]
-        df = yf.download(yahoo_sym, start=start_str, end=end_str, progress=False)
+        df = pd.DataFrame()
+        for attempt in range(1, self._max_retries + 1):
+            df = yf.download(
+                yahoo_sym,
+                start=start_str,
+                end=end_str,
+                progress=False,
+                auto_adjust=False,
+                threads=False,
+            )
+            if not df.empty:
+                break
+            if attempt < self._max_retries:
+                wait_s = self._retry_delay_s * attempt
+                logger.warning(
+                    "No data returned for %s on attempt %d/%d, retrying in %.1fs",
+                    ticker,
+                    attempt,
+                    self._max_retries,
+                    wait_s,
+                )
+                time.sleep(wait_s)
 
         if df.empty:
             logger.warning("No data returned for %s", ticker)

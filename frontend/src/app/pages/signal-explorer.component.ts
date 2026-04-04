@@ -3,8 +3,9 @@ import {
   OnInit, OnDestroy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil, catchError, of, forkJoin } from 'rxjs';
+import { Subject, takeUntil, catchError, of } from 'rxjs';
 
 import { PredictionApiService } from '../services/prediction-api.service';
 import { NotificationService } from '../services/notification.service';
@@ -19,7 +20,7 @@ import {
   selector: 'app-signal-explorer',
   standalone: true,
   imports: [
-    CommonModule, FormsModule,
+    CommonModule, FormsModule, RouterLink,
     StatCardComponent, StateBadgeComponent, LoadingSkeletonComponent, EmptyStateComponent,
   ],
   templateUrl: './signal-explorer.component.html',

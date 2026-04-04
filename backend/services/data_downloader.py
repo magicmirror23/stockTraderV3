@@ -61,7 +61,11 @@ def download_symbol(symbol: str, data_dir: Path = STORAGE_DIR, period_years: int
         ticker = yf.Ticker(ticker_str)
         end = datetime.now()
         start = end - timedelta(days=period_years * 365)
-        df = ticker.history(start=start.strftime("%Y-%m-%d"), end=end.strftime("%Y-%m-%d"))
+        df = ticker.history(
+            start=start.strftime("%Y-%m-%d"),
+            end=end.strftime("%Y-%m-%d"),
+            auto_adjust=False,
+        )
 
         if df is None or df.empty:
             logger.warning("No data returned for %s (%s)", symbol, ticker_str)

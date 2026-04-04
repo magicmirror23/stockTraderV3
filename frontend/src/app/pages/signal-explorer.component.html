@@ -89,6 +89,7 @@
               <th>Model</th>
               <th class="text-end">Calibration</th>
               <th>Top SHAP Features</th>
+              <th class="text-end">Detail</th>
             </tr>
           </thead>
           <tbody>
@@ -122,6 +123,11 @@
                   } @else {
                     <span class="text-muted">—</span>
                   }
+                </td>
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-primary" [routerLink]="['/signal-detail', s.ticker]">
+                    Open
+                  </a>
                 </td>
               </tr>
             }

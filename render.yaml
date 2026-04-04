@@ -10,7 +10,7 @@
 services:
   # ── API Gateway (public entry point) ──────────────────────────────
   - type: web
-    name: stocktrader-gateway
+    name: stocktrader-gateway-lyh3
     runtime: docker
     dockerfilePath: ./Dockerfile.render
     dockerCommand: >-
@@ -38,27 +38,27 @@ services:
         value: INFO
       - key: MARKET_DATA_URL
         fromService:
-          name: stocktrader-market-data
+          name: stocktrader-market-data-lyh3
           type: web
           property: hostport
       - key: PREDICTION_URL
         fromService:
-          name: stocktrader-prediction
+          name: stocktrader-prediction-lyh3
           type: web
           property: hostport
       - key: TRADING_URL
         fromService:
-          name: stocktrader-trading
+          name: stocktrader-trading-lyh3
           type: web
           property: hostport
       - key: ADMIN_URL
         fromService:
-          name: stocktrader-admin
+          name: stocktrader-admin-lyh3
           type: web
           property: hostport
       - key: DATABASE_URL
         fromDatabase:
-          name: stocktrader-db
+          name: stocktrader-db-lyh3
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
@@ -66,7 +66,7 @@ services:
 
   # ── Market Data Service (streaming, prices, WebSocket) ────────────
   - type: web
-    name: stocktrader-market-data
+    name: stocktrader-market-data-lyh3
     runtime: docker
     dockerfilePath: ./Dockerfile.render
     dockerCommand: >-
@@ -82,7 +82,7 @@ services:
         value: "https://stockv3.vercel.app,http://localhost:3000,http://localhost:8000"
       - key: DATABASE_URL
         fromDatabase:
-          name: stocktrader-db
+          name: stocktrader-db-lyh3
           property: connectionString
       - key: PAPER_MODE
         value: "true"
@@ -90,7 +90,7 @@ services:
 
   # ── Prediction / ML Service ──────────────────────────────────────
   - type: web
-    name: stocktrader-prediction
+    name: stocktrader-prediction-lyh3
     runtime: docker
     dockerfilePath: ./Dockerfile.render
     dockerCommand: >-
@@ -142,13 +142,13 @@ services:
         value: "300"
       - key: DATABASE_URL
         fromDatabase:
-          name: stocktrader-db
+          name: stocktrader-db-lyh3
           property: connectionString
     healthCheckPath: /api/v1/health
 
   # ── Trading Service (execution, paper trading, bot) ──────────────
   - type: web
-    name: stocktrader-trading
+    name: stocktrader-trading-lyh3
     runtime: docker
     dockerfilePath: ./Dockerfile.render
     dockerCommand: >-
@@ -164,7 +164,7 @@ services:
         value: "https://stockv3.vercel.app,http://localhost:3000,http://localhost:8000"
       - key: DATABASE_URL
         fromDatabase:
-          name: stocktrader-db
+          name: stocktrader-db-lyh3
           property: connectionString
       - key: PAPER_MODE
         value: "true"
@@ -172,7 +172,7 @@ services:
 
   # ── Admin & Backtest Service ─────────────────────────────────────
   - type: web
-    name: stocktrader-admin
+    name: stocktrader-admin-lyh3
     runtime: docker
     dockerfilePath: ./Dockerfile.render
     dockerCommand: >-
@@ -188,12 +188,12 @@ services:
         value: "https://stockv3.vercel.app,http://localhost:3000,http://localhost:8000"
       - key: DATABASE_URL
         fromDatabase:
-          name: stocktrader-db
+          name: stocktrader-db-lyh3
           property: connectionString
     healthCheckPath: /api/v1/health
 
 databases:
-  - name: stocktrader-db
+  - name: stocktrader-db-lyh3
     plan: free
     databaseName: stocktrader
     user: stocktrader
