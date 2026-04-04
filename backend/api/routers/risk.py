@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 
 from fastapi import APIRouter, HTTPException
@@ -126,13 +127,15 @@ async def risk_snapshots(limit: int = 20):
                 {
                     "id": str(r.id),
                     "snapshot_type": r.snapshot_type,
-                    "data": r.data,
+                    "data": json.loads(r.data_json) if r.data_json else {},
                     "timestamp": r.timestamp.isoformat() if r.timestamp else None,
                 }
                 for r in rows
             ]
         finally:
             db.close()
-    except Exception as exc:
-        logger.exception("Risk endpoint error")
-        raise HTTPException(status_code=500, detail="Internal server error")
+    except Exception:
+        # If the snapshot table is not available yet (fresh deploy),
+        # return an empty list so dashboards can still load.
+        logger.exception("Risk snapshot query failed; returning empty snapshot list")
+        return []

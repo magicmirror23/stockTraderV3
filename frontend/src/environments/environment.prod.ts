@@ -1,7 +1,8 @@
 export const environment = {
   production: true,
-  apiBaseUrl: 'https://stocktrader-gateway-irpt.onrender.com/api/v1',
-  wsBaseUrl: 'wss://stocktrader-market-data-irpt.onrender.com/api/v1',
+  // Route API traffic via Vercel rewrites to avoid direct gateway dependency.
+  apiBaseUrl: '/api/v1',
+  wsBaseUrl: 'wss://stocktrader-market-data-lyh3.onrender.com/api/v1',
   enableMocks: false,
   enableDebugTools: false,
   marketTimezone: 'Asia/Kolkata',

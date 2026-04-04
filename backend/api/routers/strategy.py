@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter
+from fastapi import HTTPException
 
 router = APIRouter(tags=["strategy-intelligence"])
+logger = logging.getLogger(__name__)
 
 
 # --------------- Regime Detection ---------------
@@ -13,15 +17,20 @@ router = APIRouter(tags=["strategy-intelligence"])
 async def detect_regime(symbol: str):
     """Detect current market regime for a symbol."""
     from backend.services.regime_detector import get_regime_detector
-    result = get_regime_detector().detect_for_symbol(symbol)
-    return {
-        "symbol": result.symbol,
-        "regime": result.regime.value,
-        "confidence": result.confidence,
-        "volatility": result.volatility,
-        "trend": result.trend,
-        "indicators": result.indicators,
-    }
+
+    try:
+        result = get_regime_detector().detect_for_symbol(symbol)
+        return {
+            "symbol": symbol.upper(),
+            "regime": result.regime.value,
+            "confidence": result.confidence,
+            "volatility": result.volatility,
+            "trend": result.trend_strength,
+            "indicators": result.details,
+        }
+    except Exception as exc:
+        logger.exception("Regime detection failed for %s", symbol)
+        raise HTTPException(status_code=500, detail="Failed to detect market regime") from exc
 
 
 @router.get("/regime")

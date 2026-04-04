@@ -5,20 +5,120 @@
   "installCommand": "npm ci",
   "rewrites": [
     {
-      "source": "/api/prediction/:path*",
-      "destination": "https://stocktrader-prediction-irpt.onrender.com/api/:path*"
+      "source": "/api/v1/stream/:path*",
+      "destination": "https://stocktrader-market-data-lyh3.onrender.com/api/v1/stream/:path*"
     },
     {
-      "source": "/api/admin/:path*",
-      "destination": "https://stocktrader-admin-irpt.onrender.com/api/:path*"
+      "source": "/api/v1/market/:path*",
+      "destination": "https://stocktrader-market-data-lyh3.onrender.com/api/v1/market/:path*"
     },
     {
-      "source": "/api/trading/:path*",
-      "destination": "https://stocktrader-trading-irpt.onrender.com/api/:path*"
+      "source": "/api/v1/account/:path*",
+      "destination": "https://stocktrader-market-data-lyh3.onrender.com/api/v1/account/:path*"
     },
     {
-      "source": "/api/market-data/:path*",
-      "destination": "https://stocktrader-market-data-irpt.onrender.com/api/:path*"
+      "source": "/api/v1/predict",
+      "destination": "https://stocktrader-prediction-lyh3.onrender.com/api/v1/predict"
+    },
+    {
+      "source": "/api/v1/predict/:path*",
+      "destination": "https://stocktrader-prediction-lyh3.onrender.com/api/v1/predict/:path*"
+    },
+    {
+      "source": "/api/v1/batch_predict",
+      "destination": "https://stocktrader-prediction-lyh3.onrender.com/api/v1/batch_predict"
+    },
+    {
+      "source": "/api/v1/model/:path*",
+      "destination": "https://stocktrader-prediction-lyh3.onrender.com/api/v1/model/:path*"
+    },
+    {
+      "source": "/api/v1/regime/:path*",
+      "destination": "https://stocktrader-prediction-lyh3.onrender.com/api/v1/regime/:path*"
+    },
+    {
+      "source": "/api/v1/strategy/:path*",
+      "destination": "https://stocktrader-prediction-lyh3.onrender.com/api/v1/strategy/:path*"
+    },
+    {
+      "source": "/api/v1/sentiment/:path*",
+      "destination": "https://stocktrader-prediction-lyh3.onrender.com/api/v1/sentiment/:path*"
+    },
+    {
+      "source": "/api/v1/news/:path*",
+      "destination": "https://stocktrader-prediction-lyh3.onrender.com/api/v1/news/:path*"
+    },
+    {
+      "source": "/api/v1/anomaly/:path*",
+      "destination": "https://stocktrader-prediction-lyh3.onrender.com/api/v1/anomaly/:path*"
+    },
+    {
+      "source": "/api/v1/trade_intent",
+      "destination": "https://stocktrader-trading-lyh3.onrender.com/api/v1/trade_intent"
+    },
+    {
+      "source": "/api/v1/execute",
+      "destination": "https://stocktrader-trading-lyh3.onrender.com/api/v1/execute"
+    },
+    {
+      "source": "/api/v1/paper/:path*",
+      "destination": "https://stocktrader-trading-lyh3.onrender.com/api/v1/paper/:path*"
+    },
+    {
+      "source": "/api/v1/bot/:path*",
+      "destination": "https://stocktrader-trading-lyh3.onrender.com/api/v1/bot/:path*"
+    },
+    {
+      "source": "/api/v1/risk/:path*",
+      "destination": "https://stocktrader-trading-lyh3.onrender.com/api/v1/risk/:path*"
+    },
+    {
+      "source": "/api/v1/portfolio/:path*",
+      "destination": "https://stocktrader-trading-lyh3.onrender.com/api/v1/portfolio/:path*"
+    },
+    {
+      "source": "/api/v1/options/:path*",
+      "destination": "https://stocktrader-trading-lyh3.onrender.com/api/v1/options/:path*"
+    },
+    {
+      "source": "/api/v1/execution/:path*",
+      "destination": "https://stocktrader-trading-lyh3.onrender.com/api/v1/execution/:path*"
+    },
+    {
+      "source": "/api/v1/orchestrator/:path*",
+      "destination": "https://stocktrader-trading-lyh3.onrender.com/api/v1/orchestrator/:path*"
+    },
+    {
+      "source": "/api/v1/retrain",
+      "destination": "https://stocktrader-admin-lyh3.onrender.com/api/v1/retrain"
+    },
+    {
+      "source": "/api/v1/backtest/:path*",
+      "destination": "https://stocktrader-admin-lyh3.onrender.com/api/v1/backtest/:path*"
+    },
+    {
+      "source": "/api/v1/metrics",
+      "destination": "https://stocktrader-admin-lyh3.onrender.com/api/v1/metrics"
+    },
+    {
+      "source": "/api/v1/registry/:path*",
+      "destination": "https://stocktrader-admin-lyh3.onrender.com/api/v1/registry/:path*"
+    },
+    {
+      "source": "/api/v1/drift/:path*",
+      "destination": "https://stocktrader-admin-lyh3.onrender.com/api/v1/drift/:path*"
+    },
+    {
+      "source": "/api/v1/canary/:path*",
+      "destination": "https://stocktrader-admin-lyh3.onrender.com/api/v1/canary/:path*"
+    },
+    {
+      "source": "/api/v1/log",
+      "destination": "https://stocktrader-admin-lyh3.onrender.com/api/v1/log"
+    },
+    {
+      "source": "/api/v1/health",
+      "destination": "https://stocktrader-market-data-lyh3.onrender.com/api/v1/health"
     },
     {
       "source": "/((?!assets/).*)",

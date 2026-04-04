@@ -4,8 +4,8 @@
 #   Gateway (public) → Market Data, Prediction, Trading, Admin (internal)
 #   All services share one PostgreSQL database.
 #
-# After first deploy: update MARKET_DATA_URL / PREDICTION_URL / TRADING_URL / ADMIN_URL
-# with the actual Render URLs of each service, and set ALLOWED_ORIGINS to your Vercel URL.
+# `fromService` wiring below links gateway -> internal services automatically.
+# Keep ALLOWED_ORIGINS set to your frontend URL(s).
 
 services:
   # ── API Gateway (public entry point) ──────────────────────────────
@@ -62,8 +62,6 @@ services:
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
-      - key: PAPER_MODE
-        value: "true"
     healthCheckPath: /api/v1/health
 
   # ── Market Data Service (streaming, prices, WebSocket) ────────────

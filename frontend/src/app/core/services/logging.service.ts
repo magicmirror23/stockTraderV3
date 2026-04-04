@@ -11,12 +11,13 @@
  */
 import { Injectable, isDevMode } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 @Injectable({ providedIn: 'root' })
 export class LoggingService {
-  private readonly endpoint = '/api/v1/log';
+  private readonly endpoint = `${environment.apiBaseUrl}/log`;
 
   constructor(private http: HttpClient) {}
 

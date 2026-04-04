@@ -15,22 +15,40 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+def _normalize_service_url(raw_value: str | None, fallback: str) -> str:
+    """
+    Normalize service URL from env vars.
+
+    Render's `hostport` often provides `host:port` without a scheme.
+    httpx requires an explicit scheme, so we add `http://` when missing.
+    """
+    value = (raw_value or "").strip() or fallback
+    parsed = urlparse(value)
+    if parsed.scheme:
+        return value.rstrip("/")
+
+    if value.startswith("//"):
+        value = value[2:]
+    return f"http://{value}".rstrip("/")
+
+
 # Service URLs (configurable via env vars)
-MARKET_DATA_URL = os.getenv("MARKET_DATA_URL", "http://localhost:8001")
-PREDICTION_URL = os.getenv("PREDICTION_URL", "http://localhost:8002")
-TRADING_URL = os.getenv("TRADING_URL", "http://localhost:8003")
-ADMIN_URL = os.getenv("ADMIN_URL", "http://localhost:8004")
+MARKET_DATA_URL = _normalize_service_url(os.getenv("MARKET_DATA_URL"), "http://localhost:8001")
+PREDICTION_URL = _normalize_service_url(os.getenv("PREDICTION_URL"), "http://localhost:8002")
+TRADING_URL = _normalize_service_url(os.getenv("TRADING_URL"), "http://localhost:8003")
+ADMIN_URL = _normalize_service_url(os.getenv("ADMIN_URL"), "http://localhost:8004")
 
 app = FastAPI(
     title="StockTrader API Gateway",
@@ -149,7 +167,7 @@ async def proxy_rest(request: Request, path: str):
     upstream = _resolve_upstream(full_path)
 
     if upstream is None:
-        return {"detail": f"No upstream service for path: {full_path}"}, 404
+        raise HTTPException(status_code=404, detail=f"No upstream service for path: {full_path}")
 
     target_url = f"{upstream}{full_path}"
     if request.url.query:
@@ -161,12 +179,15 @@ async def proxy_rest(request: Request, path: str):
     headers.pop("host", None)
 
     async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.request(
-            method=request.method,
-            url=target_url,
-            content=body,
-            headers=headers,
-        )
+        try:
+            resp = await client.request(
+                method=request.method,
+                url=target_url,
+                content=body,
+                headers=headers,
+            )
+        except httpx.HTTPError as exc:
+            raise HTTPException(status_code=502, detail=f"Upstream service unavailable: {exc}") from exc
 
     # Stream SSE responses
     if "text/event-stream" in resp.headers.get("content-type", ""):
