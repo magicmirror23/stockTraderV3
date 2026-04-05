@@ -256,14 +256,20 @@ def verify_labels(
                 )
 
     # Target contamination check
-    numeric = df.select_dtypes(include=[np.number])
+    numeric = df.select_dtypes(include=[np.number]).replace([np.inf, -np.inf], np.nan)
     for col in numeric.columns:
         if col == label_col:
             continue
-        valid = df[[col, label_col]].dropna()
+        valid = numeric[[col, label_col]].dropna()
         if len(valid) < 50:
             continue
-        corr = valid[col].corr(valid[label_col])
+        x = valid[col]
+        y = valid[label_col]
+        if float(x.std(ddof=0)) <= 1e-12 or float(y.std(ddof=0)) <= 1e-12:
+            continue
+        corr = float(x.corr(y))
+        if not np.isfinite(corr):
+            continue
         if abs(corr) > 0.95:
             raise LeakageError(
                 f"Feature '{col}' has {corr:.3f} correlation with label — "

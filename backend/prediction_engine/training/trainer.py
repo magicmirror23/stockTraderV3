@@ -110,6 +110,11 @@ def _ensure_data_available(
     """Ensure raw CSV history is sufficient for feature generation + safe splits."""
     data_dir.mkdir(parents=True, exist_ok=True)
     cfg = config or load_training_config()
+    try:
+        from backend.prediction_engine.data_pipeline.providers import SymbolMapper
+        _symbol_overrides = dict(SymbolMapper.SYMBOL_OVERRIDES)
+    except Exception:
+        _symbol_overrides = {}
 
     feature_warmup_rows = int(os.getenv("TRAIN_FEATURE_WARMUP_ROWS", "260"))
     min_feature_rows = max(
@@ -156,10 +161,20 @@ def _ensure_data_available(
             except Exception:
                 return 0
 
-    existing_rows: dict[str, int] = {
-        ticker: _row_count(data_dir / f"{ticker}.csv")
-        for ticker in tickers
-    }
+    def _candidate_paths(ticker: str) -> list[Path]:
+        """Return possible on-disk CSV names for a logical symbol."""
+        base = str(ticker).strip().upper()
+        names = {base}
+        mapped = _symbol_overrides.get(base)
+        if mapped:
+            names.add(mapped.upper())
+            names.add(mapped.replace("&", "_").replace("-", "_").upper())
+        return [data_dir / f"{name}.csv" for name in sorted(names)]
+
+    def _best_existing_rows(ticker: str) -> int:
+        return max((_row_count(p) for p in _candidate_paths(ticker)), default=0)
+
+    existing_rows: dict[str, int] = {ticker: _best_existing_rows(ticker) for ticker in tickers}
     missing = [t for t in tickers if existing_rows.get(t, 0) == 0]
     undersized = [t for t in tickers if 0 < existing_rows.get(t, 0) < min_raw_rows]
     needs_refresh = list(dict.fromkeys(missing + undersized))

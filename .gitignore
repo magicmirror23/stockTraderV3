@@ -34,12 +34,10 @@ htmlcov/
 .coverage
 
 # Model artifacts (large binaries)
-models/artifacts/*/model.pkl
 models/artifacts/*/model.pt
 models/artifacts/*/gru_model.pt
 
 # Downloaded data
-storage/raw/*.csv
 storage/backtests/*/
 storage/runtime/
 storage/angel_tokens.json

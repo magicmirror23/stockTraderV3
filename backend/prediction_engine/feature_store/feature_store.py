@@ -78,11 +78,41 @@ FEATURE_COLUMNS: list[str] = [
 
 
 def _load_ticker_csv(ticker: str, data_dir: Path) -> pd.DataFrame:
-    path = data_dir / f"{ticker}.csv"
-    if not path.exists():
-        raise FileNotFoundError(f"No data file for {ticker} at {path}")
-    df = pd.read_csv(path, parse_dates=["Date"])
-    return df.sort_values("Date").reset_index(drop=True)
+    base = str(ticker).strip().upper()
+    candidate_names: list[str] = [base, base.replace("_", "-"), base.replace("_", "&")]
+
+    try:
+        from backend.prediction_engine.data_pipeline.providers import SymbolMapper
+
+        mapped = SymbolMapper.SYMBOL_OVERRIDES.get(base)
+        if mapped:
+            mapped_upper = mapped.upper()
+            candidate_names.extend(
+                [
+                    mapped_upper,
+                    mapped_upper.replace("&", "_").replace("-", "_"),
+                    mapped_upper.replace("_", "-"),
+                    mapped_upper.replace("_", "&"),
+                ]
+            )
+    except Exception:
+        # Keep file loading resilient even if provider module is unavailable.
+        pass
+
+    seen: set[str] = set()
+    for name in candidate_names:
+        if name in seen:
+            continue
+        seen.add(name)
+        path = data_dir / f"{name}.csv"
+        if not path.exists():
+            continue
+        df = pd.read_csv(path, parse_dates=["Date"])
+        return df.sort_values("Date").reset_index(drop=True)
+
+    raise FileNotFoundError(
+        f"No data file for {ticker}. Tried: {', '.join(f'{n}.csv' for n in seen)}"
+    )
 
 
 def _compute_features(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
