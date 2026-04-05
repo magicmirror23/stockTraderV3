@@ -130,14 +130,19 @@ def _ensure_data_available(
     logger.info("Downloading data for %d missing tickers...", len(missing))
     try:
         from backend.prediction_engine.data_pipeline.connector_yahoo import YahooConnector
-        connector = YahooConnector(max_retries=3, retry_delay_s=1.5)
+        connector = YahooConnector(
+            max_retries=int(os.getenv("TRAIN_DOWNLOAD_PROVIDER_RETRIES", "2")),
+            retry_delay_s=float(os.getenv("TRAIN_DOWNLOAD_RETRY_DELAY_S", "1.5")),
+        )
+        outer_retries = max(1, int(os.getenv("TRAIN_DOWNLOAD_OUTER_RETRIES", "1")))
+        outer_backoff_s = float(os.getenv("TRAIN_DOWNLOAD_OUTER_BACKOFF_S", "2.0"))
         end = datetime.now()
         start_date = end - timedelta(days=365)
 
         downloaded = 0
         for ticker in missing:
             success = False
-            for attempt in range(1, 4):
+            for attempt in range(1, outer_retries + 1):
                 try:
                     path = connector.fetch_to_csv(ticker, start_date, end, data_dir)
                     # Validate the downloaded file has enough rows
@@ -154,15 +159,16 @@ def _ensure_data_available(
                     path.unlink(missing_ok=True)
                 except Exception as exc:
                     logger.warning(
-                        "Failed to download %s on attempt %d/3: %s",
+                        "Failed to download %s on attempt %d/%d: %s",
                         ticker,
                         attempt,
+                        outer_retries,
                         exc,
                     )
                     report["skipped"][ticker] = str(exc)
 
-                if attempt < 3:
-                    backoff_s = 1.5 * attempt
+                if attempt < outer_retries:
+                    backoff_s = outer_backoff_s * attempt
                     logger.info("Retrying %s in %.1fs", ticker, backoff_s)
                     time.sleep(backoff_s)
 

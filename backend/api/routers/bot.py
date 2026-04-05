@@ -6,11 +6,13 @@ instead of the old TradingBot class.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, HTTPException
 
 from backend.services.bot_lifecycle import get_bot_manager
+from backend.services.account_verification import get_angel_profile_sync
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +38,13 @@ async def bot_status():
     """Get current bot status, positions, and trade log."""
     mgr = get_bot_manager()
     return mgr.status
+
+
+@router.get("/bot/account/profile")
+async def bot_account_profile():
+    """Verify AngelOne credentials from the trading-service environment."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, get_angel_profile_sync)
 
 
 @router.post("/bot/pause")

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 import time
 from datetime import datetime, timedelta
@@ -61,7 +62,10 @@ def download_symbol(symbol: str, data_dir: Path = STORAGE_DIR, period_years: int
     try:
         end = datetime.now()
         start = end - timedelta(days=period_years * 365)
-        connector = YahooConnector(max_retries=4, retry_delay_s=1.5)
+        connector = YahooConnector(
+            max_retries=int(os.getenv("YF_DOWNLOAD_MAX_RETRIES", "2")),
+            retry_delay_s=float(os.getenv("YF_DOWNLOAD_RETRY_DELAY_S", "1.5")),
+        )
         df = connector.fetch(
             symbol,
             start=start.strftime("%Y-%m-%d"),
@@ -119,16 +123,36 @@ def refresh_all_symbols(
     """
     data_dir.mkdir(parents=True, exist_ok=True)
     results: dict[str, bool] = {}
+    consecutive_failures = 0
+    max_consecutive_failures = int(os.getenv("DATA_REFRESH_MAX_CONSEC_FAILS", "8"))
+    request_pause_s = float(os.getenv("DATA_REFRESH_REQUEST_PAUSE_S", "0.8"))
+    fail_pause_s = float(os.getenv("DATA_REFRESH_FAIL_PAUSE_S", "2.0"))
 
-    for symbol in symbols:
+    for idx, symbol in enumerate(symbols):
+        if max_consecutive_failures > 0 and consecutive_failures >= max_consecutive_failures:
+            logger.warning(
+                "Stopping batch refresh after %d consecutive failures to avoid provider hammering",
+                consecutive_failures,
+            )
+            # Mark remaining symbols as failed (not attempted) so callers can inspect.
+            for leftover in symbols[idx:]:
+                results[leftover] = False
+            break
+
         csv_path = data_dir / f"{symbol}.csv"
         if not force and not _is_stale(csv_path):
             results[symbol] = True
             logger.debug("Skipping %s — CSV is fresh", symbol)
+            consecutive_failures = 0
             continue
-        results[symbol] = download_symbol(symbol, data_dir)
-        # Small delay to avoid rate limiting
-        time.sleep(0.5)
+        ok = download_symbol(symbol, data_dir)
+        results[symbol] = ok
+        if ok:
+            consecutive_failures = 0
+            time.sleep(max(0.0, request_pause_s))
+        else:
+            consecutive_failures += 1
+            time.sleep(max(0.0, fail_pause_s))
 
     ok = sum(1 for v in results.values() if v)
     logger.info("Refreshed %d/%d symbols successfully", ok, len(results))

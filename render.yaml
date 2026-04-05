@@ -94,6 +94,30 @@ services:
           property: connectionString
       - key: PAPER_MODE
         value: "true"
+      - key: MARKET_DATA_BOOTSTRAP_DOWNLOAD
+        value: "false"
+      - key: MARKET_DATA_BACKGROUND_REFRESH_ENABLED
+        value: "false"
+      - key: MARKET_DATA_BOOTSTRAP_LIMIT
+        value: "12"
+      - key: DATA_REFRESH_MAX_CONSEC_FAILS
+        value: "5"
+      - key: DATA_REFRESH_REQUEST_PAUSE_S
+        value: "1.2"
+      - key: DATA_REFRESH_FAIL_PAUSE_S
+        value: "4.0"
+      - key: YF_REQUESTS_PER_SECOND
+        value: "0.2"
+      - key: YF_MAX_RETRIES
+        value: "2"
+      - key: YF_SYMBOL_COOLDOWN_S
+        value: "300"
+      - key: YF_CIRCUIT_FAILURE_THRESHOLD
+        value: "4"
+      - key: YF_CIRCUIT_COOLDOWN_S
+        value: "300"
+      - key: YF_DOWNLOAD_MAX_RETRIES
+        value: "2"
     healthCheckPath: /api/v1/health
 
   # ── Prediction / ML Service ──────────────────────────────────────
@@ -144,6 +168,30 @@ services:
         value: "5"
       - key: TRAIN_DEFAULT_MODEL
         value: lightgbm
+      - key: TRAIN_MIN_DAYS
+        value: "120"
+      - key: VAL_MIN_DAYS
+        value: "30"
+      - key: TEST_MIN_DAYS
+        value: "30"
+      - key: MIN_UNIQUE_DATES
+        value: "120"
+      - key: TRAIN_ALLOW_REDUCED_VALIDATION
+        value: "false"
+      - key: TRAIN_DOWNLOAD_PROVIDER_RETRIES
+        value: "2"
+      - key: TRAIN_DOWNLOAD_OUTER_RETRIES
+        value: "1"
+      - key: YF_REQUESTS_PER_SECOND
+        value: "0.2"
+      - key: YF_MAX_RETRIES
+        value: "2"
+      - key: YF_SYMBOL_COOLDOWN_S
+        value: "300"
+      - key: YF_CIRCUIT_FAILURE_THRESHOLD
+        value: "4"
+      - key: YF_CIRCUIT_COOLDOWN_S
+        value: "300"
       - key: PREDICTION_CONFIDENCE_THRESHOLD
         value: "0.55"
       - key: STALE_TICK_SECONDS
@@ -184,6 +232,18 @@ services:
           property: connectionString
       - key: PAPER_MODE
         value: "true"
+      - key: YF_REQUESTS_PER_SECOND
+        value: "0.2"
+      - key: YF_MAX_RETRIES
+        value: "2"
+      - key: YF_SYMBOL_COOLDOWN_S
+        value: "300"
+      - key: YF_CIRCUIT_FAILURE_THRESHOLD
+        value: "4"
+      - key: YF_CIRCUIT_COOLDOWN_S
+        value: "300"
+      - key: YF_DOWNLOAD_MAX_RETRIES
+        value: "2"
     healthCheckPath: /api/v1/health
 
   # ── Admin & Backtest Service ─────────────────────────────────────
@@ -206,6 +266,20 @@ services:
         fromDatabase:
           name: stocktrader-db-lyh3
           property: connectionString
+      - key: YF_REQUESTS_PER_SECOND
+        value: "0.2"
+      - key: YF_MAX_RETRIES
+        value: "2"
+      - key: YF_SYMBOL_COOLDOWN_S
+        value: "300"
+      - key: YF_CIRCUIT_FAILURE_THRESHOLD
+        value: "4"
+      - key: YF_CIRCUIT_COOLDOWN_S
+        value: "300"
+      - key: TRAIN_DOWNLOAD_PROVIDER_RETRIES
+        value: "2"
+      - key: TRAIN_DOWNLOAD_OUTER_RETRIES
+        value: "1"
     healthCheckPath: /api/v1/health
 
 databases:

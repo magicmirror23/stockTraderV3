@@ -2,7 +2,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map, retry } from 'rxjs/operators';
+import { catchError, map, retry } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { MarketStatus, AccountProfile, BotStatus, BotConfig } from '../core/models';
 
@@ -30,7 +30,11 @@ export class MarketApiService {
   }
 
   getAccountProfile(): Observable<AccountProfile> {
-    return this.http.get<AccountProfile>(`${this.base}/account/profile`);
+    // Prefer trading-service verification (same env as bot execution).
+    return this.http.get<AccountProfile>(`${this.base}/bot/account/profile`).pipe(
+      // Backward-compatible fallback to market-data endpoint.
+      catchError(() => this.http.get<AccountProfile>(`${this.base}/account/profile`)),
+    );
   }
 
   getBotStatus(): Observable<BotStatus> {

@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -14,6 +13,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from backend.services.market_hours import get_market_status
+from backend.services.account_verification import get_angel_profile_sync
 
 logger = logging.getLogger(__name__)
 
@@ -39,111 +39,11 @@ async def market_status():
 
 # â”€â”€ Account Verification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-def _get_angel_profile() -> dict[str, Any]:
-    """Connect to AngelOne SmartAPI and fetch profile + balance.
-
-    Returns dict with keys: name, client_id, email, phone, balance, net, available_margin, status.
-    """
-    api_key = os.getenv("ANGEL_API_KEY", "")
-    client_id = os.getenv("ANGEL_CLIENT_ID", "")
-    mpin = os.getenv("ANGEL_MPIN", "") or os.getenv("ANGEL_CLIENT_PIN", "")
-    totp_secret = os.getenv("ANGEL_TOTP_SECRET", "")
-
-    if not all([api_key, client_id, mpin, totp_secret]):
-        return {
-            "status": "not_configured",
-            "message": "AngelOne credentials are not set. Add ANGEL_API_KEY, ANGEL_CLIENT_ID, ANGEL_MPIN, ANGEL_TOTP_SECRET to .env",
-            "credentials_set": {
-                "ANGEL_API_KEY": bool(api_key),
-                "ANGEL_CLIENT_ID": bool(client_id),
-                "ANGEL_MPIN": bool(mpin),
-                "ANGEL_TOTP_SECRET": bool(totp_secret),
-            },
-        }
-
-    paper_mode = os.getenv("PAPER_MODE", "true").lower() == "true"
-    if paper_mode:
-        paper_balance = float(os.getenv("PAPER_BALANCE", "100000"))
-        return {
-            "status": "paper_mode",
-            "message": "Running in Paper Mode. Set PAPER_MODE=false in .env to connect to real account.",
-            "name": "Paper Trader",
-            "client_id": client_id,
-            "email": "paper@demo.local",
-            "balance": paper_balance,
-            "net": paper_balance,
-            "available_margin": paper_balance,
-            "credentials_set": {
-                "ANGEL_API_KEY": True,
-                "ANGEL_CLIENT_ID": True,
-                "ANGEL_MPIN": True,
-                "ANGEL_TOTP_SECRET": True,
-            },
-        }
-
-    try:
-        from SmartApi import SmartConnect
-        import pyotp
-
-        totp = pyotp.TOTP(totp_secret).now()
-        api = SmartConnect(api_key=api_key)
-        session = api.generateSession(client_id, mpin, totp)
-
-        if not session or session.get("status") is False:
-            return {
-                "status": "login_failed",
-                "message": f"AngelOne login failed: {session.get('message', 'Unknown error')}",
-                "credentials_set": {
-                    "ANGEL_API_KEY": True,
-                    "ANGEL_CLIENT_ID": True,
-                    "ANGEL_MPIN": True,
-                    "ANGEL_TOTP_SECRET": True,
-                },
-            }
-
-        profile = api.getProfile(session["data"]["refreshToken"])
-        rms = api.rmsLimit()
-
-        profile_data = profile.get("data", {}) if profile else {}
-        rms_data = rms.get("data", {}) if rms else {}
-
-        return {
-            "status": "connected",
-            "message": "Credentials verified â€“ connected to AngelOne",
-            "name": profile_data.get("name", "N/A"),
-            "client_id": profile_data.get("clientcode", client_id),
-            "email": profile_data.get("email", ""),
-            "phone": profile_data.get("mobileno", ""),
-            "broker": profile_data.get("broker", "ANGEL"),
-            "balance": float(rms_data.get("availablecash", 0)),
-            "net": float(rms_data.get("net", 0)),
-            "available_margin": float(rms_data.get("availableintradaypayin", 0)),
-            "utilized_margin": float(rms_data.get("utiliseddebits", 0)),
-            "credentials_set": {
-                "ANGEL_API_KEY": True,
-                "ANGEL_CLIENT_ID": True,
-                "ANGEL_MPIN": True,
-                "ANGEL_TOTP_SECRET": True,
-            },
-        }
-    except ImportError:
-        return {
-            "status": "missing_package",
-            "message": "Install smartapi-python: pip install smartapi-python pyotp",
-        }
-    except Exception as exc:
-        logger.exception("Account verification failed")
-        return {
-            "status": "error",
-            "message": "Internal server error",
-        }
-
-
 @router.get("/account/profile")
 async def account_profile():
     """Verify AngelOne credentials and fetch account name, balance, margin."""
     loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, _get_angel_profile)
+    result = await loop.run_in_executor(None, get_angel_profile_sync)
     return result
 
 

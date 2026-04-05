@@ -36,4 +36,8 @@ def create_service_app(title: str, version: str = "0.1.0") -> FastAPI:
             allow_headers=["Content-Type", "Authorization"],
         )
 
+    @app.api_route("/", methods=["GET", "HEAD"])
+    async def root():
+        return {"status": "ok", "service": title}
+
     return app
