@@ -5,15 +5,18 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import threading
 import uuid
 from datetime import datetime, timezone
 
+import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from backend.services.model_manager import ModelManager
 from backend.services.model_registry import ModelRegistry
+from backend.services.model_sync import build_model_sync_payload
 from backend.services.monitoring import (
     capture_exception,
     get_metrics_text,
@@ -74,6 +77,54 @@ def _failure_payload(
     }
 
 
+def _sync_model_to_prediction(entry: dict, correlation_id: str) -> dict | None:
+    """Push freshly trained model artifacts to prediction-service."""
+    enabled = os.getenv("SYNC_MODEL_TO_PREDICTION", "true").strip().lower() in {
+        "1", "true", "yes", "on", "y"
+    }
+    if not enabled:
+        return None
+
+    prediction_url = (os.getenv("PREDICTION_URL", "") or os.getenv("PREDICTION_SYNC_URL", "")).strip().rstrip("/")
+    if not prediction_url:
+        logger.info("[cid=%s] Model sync skipped: PREDICTION_URL not configured", correlation_id)
+        return None
+
+    try:
+        payload = build_model_sync_payload(entry["version"], registry_entry=entry)
+        sync_token = os.getenv("MODEL_SYNC_TOKEN", "").strip()
+        if sync_token:
+            payload["sync_token"] = sync_token
+
+        timeout_s = float(os.getenv("MODEL_SYNC_TIMEOUT_S", "180"))
+        endpoint = f"{prediction_url}/api/v1/model/sync"
+        with httpx.Client(timeout=timeout_s) as client:
+            resp = client.post(endpoint, json=payload)
+        if resp.status_code >= 400:
+            logger.warning(
+                "[cid=%s] Model sync failed (%s): %s",
+                correlation_id,
+                resp.status_code,
+                resp.text,
+            )
+            return {
+                "status": "failed",
+                "http_status": resp.status_code,
+                "message": resp.text,
+            }
+        return {
+            "status": "ok",
+            "endpoint": endpoint,
+            "response": resp.json() if resp.content else {},
+        }
+    except Exception as exc:
+        logger.warning("[cid=%s] Model sync exception: %s", correlation_id, exc)
+        return {
+            "status": "failed",
+            "message": str(exc),
+        }
+
+
 @router.get("/retrain/status")
 async def retrain_status():
     """Poll retrain progress without blocking."""
@@ -124,6 +175,7 @@ async def retrain():
         # Reload the freshly trained model
         mgr = ModelManager()
         mgr.load_latest()
+        sync_result = _sync_model_to_prediction(entry, correlation_id)
 
         record_retrain("success")
         with _retrain_lock:
@@ -141,6 +193,7 @@ async def retrain():
             "message": "Retrain completed",
             "model_version": entry["version"],
             "metrics": entry["metrics"],
+            "sync": sync_result,
             "correlation_id": correlation_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }

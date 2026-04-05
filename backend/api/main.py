@@ -47,6 +47,20 @@ async def _lifespan(app: FastAPI):
     _log = logging.getLogger("stocktrader.startup")
 
     def _init_data():
+        bootstrap_raw = os.getenv("APP_STARTUP_BOOTSTRAP_DOWNLOAD")
+        if bootstrap_raw is None:
+            bootstrap_enabled = os.getenv("APP_ENV", "").strip().lower() not in {
+                "prod",
+                "production",
+            }
+        else:
+            bootstrap_enabled = str(bootstrap_raw).strip().lower() in {
+                "1", "true", "yes", "on", "y"
+            }
+        if not bootstrap_enabled:
+            _log.info("Startup data bootstrap disabled.")
+            return
+
         # Use a file lock so only one Gunicorn worker runs the download
         lock_path = Path(tempfile.gettempdir()) / "stocktrader_init.lock"
         try:
@@ -118,8 +132,10 @@ app.include_router(trade.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(paper.router, prefix="/api/v1")
 app.include_router(stream.router, prefix="/api/v1")
-app.include_router(market.router, prefix="/api/v1")
+# Register bot router before legacy market router so /bot/* always uses
+# the lifecycle manager implementation.
 app.include_router(bot.router, prefix="/api/v1")
+app.include_router(market.router, prefix="/api/v1")
 app.include_router(risk.router, prefix="/api/v1")
 app.include_router(strategy.router, prefix="/api/v1")
 app.include_router(portfolio.router, prefix="/api/v1")

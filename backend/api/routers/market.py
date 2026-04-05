@@ -8,9 +8,10 @@ import logging
 import threading
 import time
 from datetime import datetime, timezone
+from functools import partial
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from backend.services.market_hours import get_market_status
 from backend.services.account_verification import get_angel_profile_sync
@@ -40,10 +41,16 @@ async def market_status():
 # â”€â”€ Account Verification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @router.get("/account/profile")
-async def account_profile():
+async def account_profile(
+    mode: str = Query(
+        default="auto",
+        description="auto (paper aware) or live (force live broker verification)",
+    )
+):
     """Verify AngelOne credentials and fetch account name, balance, margin."""
     loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, get_angel_profile_sync)
+    force_live = str(mode).strip().lower() in {"live", "broker", "real"}
+    result = await loop.run_in_executor(None, partial(get_angel_profile_sync, force_live))
     return result
 
 

@@ -29,11 +29,11 @@ export class MarketApiService {
     );
   }
 
-  getAccountProfile(): Observable<AccountProfile> {
+  getAccountProfile(mode: 'auto' | 'live' = 'auto'): Observable<AccountProfile> {
     // Prefer trading-service verification (same env as bot execution).
-    return this.http.get<AccountProfile>(`${this.base}/bot/account/profile`).pipe(
+    return this.http.get<AccountProfile>(`${this.base}/bot/account/profile?mode=${mode}`).pipe(
       // Backward-compatible fallback to market-data endpoint.
-      catchError(() => this.http.get<AccountProfile>(`${this.base}/account/profile`)),
+      catchError(() => this.http.get<AccountProfile>(`${this.base}/account/profile?mode=${mode}`)),
     );
   }
 

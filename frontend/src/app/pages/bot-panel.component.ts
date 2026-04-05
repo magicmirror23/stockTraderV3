@@ -60,6 +60,7 @@ export class BotPanelComponent implements OnInit, OnDestroy {
   // Computed from bot
   positionEntries: { key: string; value: any }[] = [];
   credentialsList: { key: string; set: boolean }[] = [];
+  credentialSources: { key: string; source: string }[] = [];
   countdownStr = '';
   private secondsLeft = 0;
 
@@ -75,6 +76,7 @@ export class BotPanelComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadMarket();
+    this.loadAccount('auto');
     this.loadBotStatus();
     timer(30_000, 30_000).pipe(takeUntil(this.destroy$)).subscribe(() => this.loadMarket());
     timer(5_000, 5_000).pipe(takeUntil(this.destroy$)).subscribe(() => this.loadBotStatus());
@@ -110,12 +112,14 @@ export class BotPanelComponent implements OnInit, OnDestroy {
   }
 
   get botStateBadge(): BadgeVariant {
+    if (this.botStatus?.state === 'SAFE_MODE' || this.botStatus?.state === 'ERROR') return 'danger';
     if (this.botRunning && !this.botStatus?.paused) return 'running';
     if (this.botStatus?.paused) return 'warning';
     return 'stopped';
   }
 
   get botStateLabel(): string {
+    if (this.botStatus?.state) return this.botStatus.state;
     if (this.botRunning && !this.botStatus?.paused) return 'RUNNING';
     if (this.botStatus?.paused) return 'PAUSED';
     return 'STOPPED';
@@ -135,10 +139,10 @@ export class BotPanelComponent implements OnInit, OnDestroy {
   }
 
   // ── Actions ──
-  loadAccount(): void {
+  loadAccount(mode: 'auto' | 'live' = 'auto'): void {
     this.accountLoading = true;
     this.cdr.markForCheck();
-    this.marketApi.getAccountProfile().pipe(
+    this.marketApi.getAccountProfile(mode).pipe(
       catchError(() => { this.notify.error('Failed to verify account'); return of(null); }),
       takeUntil(this.destroy$),
     ).subscribe(a => {
@@ -147,6 +151,9 @@ export class BotPanelComponent implements OnInit, OnDestroy {
         this.account = a;
         this.credentialsList = a.credentials_set
           ? Object.entries(a.credentials_set).map(([key, set]) => ({ key, set }))
+          : [];
+        this.credentialSources = a.credentials_source
+          ? Object.entries(a.credentials_source).map(([key, source]) => ({ key, source }))
           : [];
       }
       this.cdr.markForCheck();
@@ -217,8 +224,12 @@ export class BotPanelComponent implements OnInit, OnDestroy {
   private startBot(): void {
     this.starting = true;
     this.cdr.markForCheck();
+    const desiredPositionSize = Math.max(1_000, Number(this.botConfig.position_size ?? 10_000));
+    const available = Math.max(1, Number(this.botStatus?.available_balance ?? 100_000));
+    const positionSizePct = Math.min(0.5, Math.max(0.01, desiredPositionSize / available));
     const config = {
       ...this.botConfig,
+      position_size_pct: positionSizePct,
       watchlist: this.watchlistStr.split(',').map(t => t.trim()).filter(t => t),
     };
     this.marketApi.startBot(config).pipe(
@@ -272,12 +283,75 @@ export class BotPanelComponent implements OnInit, OnDestroy {
       takeUntil(this.destroy$),
     ).subscribe(s => {
       if (s) {
-        this.botStatus = s;
-        this.botRunning = s.running;
-        this.positionEntries = Object.entries(s.positions || {}).map(([key, value]) => ({ key, value }));
+        const normalized = this.normalizeBotStatus(s);
+        this.botStatus = normalized;
+        this.botRunning = normalized.running;
+        this.positionEntries = Object.entries(normalized.positions || {}).map(([key, value]) => ({ key, value }));
+
+        if (normalized.watchlist?.length) {
+          this.watchlistStr = normalized.watchlist.join(', ');
+        }
+        if (normalized.min_confidence != null) {
+          this.botConfig.min_confidence = normalized.min_confidence;
+        }
+        if (normalized.max_positions != null) {
+          this.botConfig.max_positions = normalized.max_positions;
+        }
+        if (normalized.position_size != null) {
+          this.botConfig.position_size = normalized.position_size;
+        }
+        if (normalized.stop_loss_pct != null) {
+          this.botConfig.stop_loss_pct = normalized.stop_loss_pct;
+        }
+        if (normalized.take_profit_pct != null) {
+          this.botConfig.take_profit_pct = normalized.take_profit_pct;
+        }
+        if (normalized.cycle_interval != null) {
+          this.botConfig.cycle_interval = normalized.cycle_interval;
+        }
       }
       this.cdr.markForCheck();
     });
+  }
+
+  private normalizeBotStatus(raw: any): BotStatus {
+    const state = typeof raw?.state === 'string' ? raw.state : '';
+    const running = typeof raw?.running === 'boolean'
+      ? raw.running
+      : ['ACTIVE', 'PAUSED', 'WAITING_FOR_MARKET', 'WAITING_FOR_CONSENT', 'SAFE_MODE'].includes(state);
+    const paused = typeof raw?.paused === 'boolean'
+      ? raw.paused
+      : ['PAUSED', 'WAITING_FOR_MARKET', 'WAITING_FOR_CONSENT'].includes(state);
+    const consentPending = typeof raw?.consent_pending === 'boolean'
+      ? raw.consent_pending
+      : state === 'WAITING_FOR_CONSENT';
+    const watchlist = Array.isArray(raw?.watchlist)
+      ? raw.watchlist
+      : Array.isArray(raw?.config?.watchlist) ? raw.config.watchlist : [];
+
+    return {
+      ...raw,
+      state,
+      running,
+      paused,
+      consent_pending: consentPending,
+      auto_resume_in: raw?.auto_resume_in ?? raw?.consent_countdown ?? null,
+      watchlist,
+      min_confidence: raw?.min_confidence ?? raw?.config?.min_confidence ?? this.botConfig.min_confidence ?? 0.7,
+      max_positions: raw?.max_positions ?? raw?.config?.max_positions ?? this.botConfig.max_positions ?? 5,
+      position_size: raw?.position_size
+        ?? Math.round((raw?.position_size_pct ?? raw?.config?.position_size_pct ?? 0.1) * (raw?.available_balance ?? 100000)),
+      stop_loss_pct: raw?.stop_loss_pct ?? raw?.config?.stop_loss_pct ?? this.botConfig.stop_loss_pct ?? 0.02,
+      take_profit_pct: raw?.take_profit_pct ?? raw?.config?.take_profit_pct ?? this.botConfig.take_profit_pct ?? 0.05,
+      cycle_interval: raw?.cycle_interval ?? raw?.config?.cycle_interval ?? this.botConfig.cycle_interval ?? 60,
+      cycle_count: raw?.cycle_count ?? 0,
+      last_cycle: raw?.last_cycle ?? null,
+      active_positions: raw?.active_positions ?? Object.keys(raw?.positions || {}).length,
+      positions: raw?.positions || {},
+      trades_today: raw?.trades_today || [],
+      total_pnl: raw?.total_pnl ?? 0,
+      errors: raw?.errors || [],
+    };
   }
 
   private tickCountdown(): void {

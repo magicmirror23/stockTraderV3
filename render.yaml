@@ -22,6 +22,8 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      - key: SERVICE_NAME
+        value: gateway
       - key: ALLOWED_ORIGINS
         value: "https://stockv3.vercel.app,http://localhost:3000,http://localhost:8000"
       - key: PAPER_MODE
@@ -78,6 +80,8 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      - key: SERVICE_NAME
+        value: market-data
       - key: ALLOWED_ORIGINS
         value: "https://stockv3.vercel.app,http://localhost:3000,http://localhost:8000"
       - key: ANGEL_API_KEY
@@ -97,6 +101,8 @@ services:
       - key: MARKET_DATA_BOOTSTRAP_DOWNLOAD
         value: "false"
       - key: MARKET_DATA_BACKGROUND_REFRESH_ENABLED
+        value: "false"
+      - key: PRICE_FEED_AUTO_DOWNLOAD
         value: "false"
       - key: MARKET_DATA_BOOTSTRAP_LIMIT
         value: "12"
@@ -134,6 +140,8 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      - key: SERVICE_NAME
+        value: prediction
       - key: ALLOWED_ORIGINS
         value: "https://stockv3.vercel.app,http://localhost:3000,http://localhost:8000"
       - key: SERVICE_PORT
@@ -158,6 +166,8 @@ services:
         value: ""
       - key: MODEL_ARTIFACTS_DIR
         value: storage/models
+      - key: MODEL_SYNC_TOKEN
+        value: stocktrader-sync-v1
       - key: TRAIN_LOOKBACK_DAYS
         value: "730"
       - key: TRAIN_VAL_RATIO
@@ -226,6 +236,8 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      - key: SERVICE_NAME
+        value: trading
       - key: ALLOWED_ORIGINS
         value: "https://stockv3.vercel.app,http://localhost:3000,http://localhost:8000"
       - key: ANGEL_API_KEY
@@ -270,6 +282,8 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      - key: SERVICE_NAME
+        value: admin
       - key: ALLOWED_ORIGINS
         value: "https://stockv3.vercel.app,http://localhost:3000,http://localhost:8000"
       - key: DATABASE_URL
@@ -286,6 +300,17 @@ services:
         value: "4"
       - key: YF_CIRCUIT_COOLDOWN_S
         value: "300"
+      - key: TRAIN_DATA_SOURCE_MODE
+        value: "local_only"
+      - key: SYNC_MODEL_TO_PREDICTION
+        value: "true"
+      - key: MODEL_SYNC_TOKEN
+        value: stocktrader-sync-v1
+      - key: PREDICTION_URL
+        fromService:
+          name: stocktrader-prediction-lyh3
+          type: web
+          property: hostport
       - key: TRAIN_DOWNLOAD_PROVIDER_RETRIES
         value: "2"
       - key: TRAIN_DOWNLOAD_OUTER_RETRIES

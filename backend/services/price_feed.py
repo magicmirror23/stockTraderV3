@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import os
 import random
 import time
 from dataclasses import dataclass, field
@@ -82,11 +83,24 @@ class PriceFeed:
         self._data_dir = Path(data_dir)
         self._data_dir.mkdir(parents=True, exist_ok=True)
         self._live_feed = None  # lazily initialized AngelLiveFeed
+        self._auto_download = self._resolve_auto_download_flag()
+
+    @staticmethod
+    def _resolve_auto_download_flag() -> bool:
+        raw = os.getenv("PRICE_FEED_AUTO_DOWNLOAD")
+        if raw is not None:
+            return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
+        # Safer default in production to avoid provider rate-limit storms.
+        app_env = os.getenv("APP_ENV", "").strip().lower()
+        return app_env not in {"prod", "production"}
 
     # -- Auto-download helpers ---------------------------------------------------
 
     def _ensure_data(self, symbol: str) -> bool:
         """Make sure CSV data exists and is fresh for *symbol*. Downloads if needed."""
+        if not self._auto_download:
+            csv_path = self._data_dir / f"{symbol}.csv"
+            return csv_path.exists()
         try:
             from backend.services.data_downloader import ensure_symbol_data
             return ensure_symbol_data(symbol, self._data_dir)

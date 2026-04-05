@@ -11,6 +11,17 @@ from backend.prediction_engine.models.lightgbm_model import LightGBMModel
 lgb = pytest.importorskip("lightgbm")
 
 
+class _DummyBooster:
+    def __init__(self, probs):
+        self._probs = np.asarray(probs, dtype=float)
+
+    def predict(self, X):
+        n = len(X)
+        if n <= len(self._probs):
+            return self._probs[:n]
+        return np.pad(self._probs, (0, n - len(self._probs)), mode="edge")
+
+
 @pytest.fixture()
 def trained_model(tmp_path):
     """Train a tiny model on synthetic data."""
@@ -58,6 +69,59 @@ def test_predict_with_expected_return(trained_model):
     for r in results:
         assert r["action"] in ("buy", "sell", "hold")
         assert 0.0 <= r["confidence"] <= 1.0
+        assert "trade_edge" in r
+        assert "no_trade_reason" in r
+
+
+def test_predict_with_expected_return_holds_when_edge_too_small():
+    model = LightGBMModel(seed=42)
+    model._model = _DummyBooster([0.56])
+    model._metrics = {"optimal_threshold": 0.52}
+
+    X = pd.DataFrame(
+        {
+            "close": [100.0],
+            "volatility_20": [0.02],
+            "atr_14": [0.8],
+        }
+    )
+    results = model.predict_with_expected_return(
+        X,
+        price=100.0,
+        quantity=1,
+        min_net_edge_bps=40,
+        slippage_bps=5,
+    )
+    assert results[0]["action"] == "hold"
+    assert results[0]["trade_edge"] >= 0
+    assert results[0]["no_trade_reason"] in {
+        "net_edge_below_costs",
+        "probability_in_no_trade_band",
+    }
+
+
+def test_predict_with_expected_return_allows_strong_short_edge():
+    model = LightGBMModel(seed=42)
+    model._model = _DummyBooster([0.10])
+    model._metrics = {"optimal_threshold": 0.52}
+
+    X = pd.DataFrame(
+        {
+            "close": [100.0],
+            "volatility_20": [0.03],
+            "atr_14": [1.0],
+        }
+    )
+    results = model.predict_with_expected_return(
+        X,
+        price=100.0,
+        quantity=1,
+        min_net_edge_bps=2,
+        slippage_bps=0,
+    )
+    assert results[0]["action"] in {"sell", "hold"}
+    if results[0]["action"] == "sell":
+        assert results[0]["trade_edge"] > 0
 
 
 def test_save_load_roundtrip(trained_model, tmp_path):

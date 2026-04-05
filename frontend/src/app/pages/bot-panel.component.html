@@ -53,10 +53,15 @@
         <section class="card bp__section">
           <div class="bp__section-header">
             <h2 class="bp__section-title"><i class="bi bi-person-check"></i> Account</h2>
-            <button class="btn btn-sm btn-outline-primary" (click)="loadAccount()" [disabled]="accountLoading">
-              @if (accountLoading) { <span class="spinner-border spinner-border-sm"></span> }
-              Verify
-            </button>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-primary" (click)="loadAccount('auto')" [disabled]="accountLoading">
+                @if (accountLoading) { <span class="spinner-border spinner-border-sm"></span> }
+                Verify
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" (click)="loadAccount('live')" [disabled]="accountLoading">
+                Verify Live
+              </button>
+            </div>
           </div>
 
           @if (!account) {
@@ -83,6 +88,21 @@
               <div class="bp__creds">
                 @for (c of credentialsList; track c.key) {
                   <app-state-badge [label]="(c.set ? '✔ ' : '✗ ') + c.key" [variant]="c.set ? 'success' : 'danger'" />
+                }
+              </div>
+            }
+
+            @if (account.missing_credentials?.length) {
+              <div class="text-muted mt-2" style="font-size:0.75rem;">
+                Missing: {{ account.missing_credentials?.join(', ') }}
+              </div>
+            }
+
+            @if (credentialSources.length) {
+              <div class="text-muted mt-2" style="font-size:0.75rem;">
+                Sources:
+                @for (src of credentialSources; track src.key) {
+                  <span class="d-inline-block me-2">{{ src.key }}={{ src.source }}</span>
                 }
               </div>
             }

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 import time
 import uuid
@@ -407,7 +408,23 @@ class BotLifecycleManager:
             elapsed = time.time() - self._consent_requested_at
             consent_countdown = max(0, int(self._config.consent_timeout - elapsed))
 
+        running_states = {
+            BotLifecycleState.ACTIVE,
+            BotLifecycleState.PAUSED,
+            BotLifecycleState.WAITING_FOR_CONSENT,
+            BotLifecycleState.WAITING_FOR_MARKET,
+            BotLifecycleState.SAFE_MODE,
+        }
+        running = self._state in running_states
+        paused = self._state in {
+            BotLifecycleState.PAUSED,
+            BotLifecycleState.WAITING_FOR_MARKET,
+            BotLifecycleState.WAITING_FOR_CONSENT,
+        }
+        consent_pending = self._state == BotLifecycleState.WAITING_FOR_CONSENT
+
         return {
+            # New lifecycle-first contract
             "state": self._state.value,
             "config": self._config.to_dict(),
             "consent_countdown": consent_countdown,
@@ -424,6 +441,22 @@ class BotLifecycleManager:
             "risk": risk,
             "errors": self.errors[-10:],
             "error_message": self._error_message,
+            # Backward-compatible contract expected by old frontend components
+            "running": running,
+            "paused": paused,
+            "consent_pending": consent_pending,
+            "auto_resume_in": consent_countdown,
+            "watchlist": list(self._config.watchlist),
+            "min_confidence": self._config.min_confidence,
+            "max_positions": self._config.max_positions,
+            "position_size_pct": self._config.position_size_pct,
+            "position_size": round(
+                (self._available_balance or 0.0) * self._config.position_size_pct,
+                2,
+            ),
+            "stop_loss_pct": self._config.stop_loss_pct,
+            "take_profit_pct": self._config.take_profit_pct,
+            "cycle_interval": self._config.cycle_interval,
         }
 
     # ------------------------------------------------------------------
@@ -615,14 +648,25 @@ class BotLifecycleManager:
 
                     action = prediction.get("action", "hold")
                     confidence = prediction.get("confidence", 0)
+                    net_expected_return = float(prediction.get("net_expected_return", 0.0) or 0.0)
+                    trade_edge = float(
+                        prediction.get("trade_edge", abs(net_expected_return)) or abs(net_expected_return)
+                    )
+                    min_edge_pct = max(
+                        0.0,
+                        float(os.getenv("BOT_MIN_NET_EDGE_BPS", "8")) / 10_000.0,
+                    )
 
                     if action == "hold" or confidence < self._config.min_confidence:
                         # Log skip reason for "why not trade"
                         self._log_skip(ticker, action, confidence,
                                        "low_confidence" if confidence < self._config.min_confidence else "hold_signal")
                         continue
+                    if trade_edge < min_edge_pct:
+                        self._log_skip(ticker, action, confidence, "edge_below_threshold")
+                        continue
 
-                    price = prediction.get("predicted_price", 100)
+                    price = prediction.get("reference_price", prediction.get("predicted_price", 100))
                     if price <= 0:
                         continue
 
@@ -630,10 +674,24 @@ class BotLifecycleManager:
                     if max_trade_value < price:
                         self._log_skip(ticker, action, confidence, "insufficient_balance")
                         continue
-                    qty = max(1, int(max_trade_value / price))
+
+                    # Volatility-aware sizing: cap quantity by stop-risk and ATR.
+                    atr_14 = float(prediction.get("atr_14", 0.0) or 0.0)
+                    stop_distance = max(price * self._config.stop_loss_pct, atr_14 * 1.5)
+                    cycle_risk_budget = self._available_balance * float(
+                        os.getenv("BOT_RISK_BUDGET_PCT", "0.005")
+                    )
+                    qty_by_risk = int(cycle_risk_budget / stop_distance) if stop_distance > 0 else 0
+                    qty_by_notional = int(max_trade_value / price)
+                    qty = max(1, min(qty_by_notional, qty_by_risk if qty_by_risk > 0 else qty_by_notional))
 
                     breakeven_move = estimate_breakeven_move(price, qty, TradeType.INTRADAY)
-                    expected_profit = price * prediction.get("expected_return", 0.02)
+                    expected_return_abs = abs(float(prediction.get("expected_return", 0.0) or 0.0))
+                    if not risk.meets_risk_reward(expected_return_abs, self._config.stop_loss_pct):
+                        self._log_skip(ticker, action, confidence, "risk_reward_too_low")
+                        continue
+
+                    expected_profit = price * trade_edge
                     if expected_profit < breakeven_move:
                         self._log_skip(ticker, action, confidence, "below_breakeven")
                         continue
@@ -665,6 +723,9 @@ class BotLifecycleManager:
                         "pnl": 0.0,
                         "net_pnl": 0.0,
                         "confidence": confidence,
+                        "expected_return": prediction.get("expected_return"),
+                        "net_expected_return": net_expected_return,
+                        "trade_edge": trade_edge,
                         "strategy": prediction.get("strategy", "momentum"),
                         "regime": prediction.get("regime", "unknown"),
                         "entered_at": datetime.now(timezone.utc).isoformat(),
@@ -677,7 +738,10 @@ class BotLifecycleManager:
                         "quantity": qty,
                         "price": filled_price,
                         "confidence": confidence,
-                        "reason": f"signal={action}, conf={confidence:.2f}",
+                        "reason": (
+                            f"signal={action}, conf={confidence:.2f}, "
+                            f"edge={trade_edge:.4f}, net={net_expected_return:.4f}"
+                        ),
                         "timestamp": datetime.now(timezone.utc).isoformat(),
                     }
                     self.trades_today.append(trade_record)

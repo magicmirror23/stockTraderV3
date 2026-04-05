@@ -110,20 +110,69 @@ class LightGBMModel(BaseModel):
     # Inference
     # ------------------------------------------------------------------
 
+    def _resolve_base_threshold(self) -> float:
+        """Decision threshold anchor from training metrics/params."""
+        raw = (
+            self._metrics.get("optimal_threshold")
+            if isinstance(self._metrics, dict)
+            else None
+        )
+        if raw is None and isinstance(self._params, dict):
+            raw = self._params.get("optimal_threshold")
+
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            value = 0.52
+        return float(np.clip(value, 0.50, 0.70))
+
+    @staticmethod
+    def _safe_row_value(
+        X: pd.DataFrame,
+        row_idx: int,
+        col: str,
+        default: float = 0.0,
+    ) -> float:
+        if not isinstance(X, pd.DataFrame) or col not in X.columns:
+            return default
+        try:
+            value = float(X.iloc[row_idx][col])
+        except (TypeError, ValueError):
+            return default
+        if not np.isfinite(value):
+            return default
+        return value
+
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         """Return 3-class labels: 0=sell, 1=hold, 2=buy.
 
         Binary model predicts P(up). Map to 3 classes using confidence:
-        - P(up) > 0.52 → buy (2)
-        - P(up) < 0.48 → sell (0)
+        - Dynamic threshold around 0.5, widened by volatility
+        - Costs / volatility increase abstention band
         - otherwise → hold (1)
         """
         proba_up = self.predict_proba(X)
         if proba_up.ndim == 2:
             proba_up = proba_up[:, 1] if proba_up.shape[1] == 2 else proba_up[:, 0]
-        labels = np.ones(len(proba_up), dtype=int)  # default hold
-        labels[proba_up > 0.52] = 2   # buy
-        labels[proba_up < 0.48] = 0   # sell
+
+        base_threshold = self._resolve_base_threshold()
+        base_half_band = max(0.02, abs(base_threshold - 0.5))
+
+        labels = np.ones(len(proba_up), dtype=int)
+        for i, p_up in enumerate(proba_up):
+            price = max(self._safe_row_value(X, i, "close", default=100.0), 1.0)
+            volatility = abs(self._safe_row_value(X, i, "volatility_20", default=0.02))
+            atr_ratio = abs(self._safe_row_value(X, i, "atr_14", default=0.0)) / price
+
+            regime_band = float(np.clip(volatility * 0.35 + atr_ratio * 0.75, 0.0, 0.08))
+            half_band = float(np.clip(base_half_band + regime_band, 0.02, 0.20))
+            buy_threshold = min(0.90, 0.5 + half_band)
+            sell_threshold = max(0.10, 0.5 - half_band)
+
+            if p_up >= buy_threshold:
+                labels[i] = 2
+            elif p_up <= sell_threshold:
+                labels[i] = 0
         return labels
 
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
@@ -159,7 +208,12 @@ class LightGBMModel(BaseModel):
         return result
 
     def predict_with_expected_return(
-        self, X: pd.DataFrame, price: float | None = None, quantity: int = 1
+        self,
+        X: pd.DataFrame,
+        price: float | None = None,
+        quantity: int = 1,
+        min_net_edge_bps: float = 6.0,
+        slippage_bps: float = 2.0,
     ) -> list[dict]:
         """Return action probabilities mapped to actions + expected return estimate.
 
@@ -173,39 +227,90 @@ class LightGBMModel(BaseModel):
         if proba_up.ndim == 2:
             proba_up = proba_up[:, 1] if proba_up.shape[1] == 2 else proba_up[:, 0]
         results = []
+        base_threshold = self._resolve_base_threshold()
+        base_half_band = max(0.02, abs(base_threshold - 0.5))
+        min_edge_pct = max(0.0, float(min_net_edge_bps)) / 10_000.0
+        slippage_pct = max(0.0, float(slippage_bps)) / 10_000.0
+
         for p_up in proba_up:
             p_down = 1 - p_up
 
-            # Cost-aware thresholds
-            buy_threshold = 0.52
-            sell_threshold = 0.48
-            if price is not None and quantity > 0:
-                breakeven = estimate_breakeven_move(price, quantity, TradeType.INTRADAY)
-                breakeven_pct = breakeven / price if price > 0 else 0
-                buy_threshold = min(0.70, 0.52 + breakeven_pct * 3)
-                sell_threshold = max(0.30, 0.48 - breakeven_pct * 3)
+            idx = len(results)
+            row_price = price if price is not None else self._safe_row_value(X, idx, "close", default=100.0)
+            row_price = max(float(row_price), 1.0)
+            row_volatility = abs(self._safe_row_value(X, idx, "volatility_20", default=0.02))
+            row_atr = abs(self._safe_row_value(X, idx, "atr_14", default=0.0))
+            atr_ratio = row_atr / row_price if row_price > 0 else 0.0
 
-            if p_up > buy_threshold:
-                action = "buy"
-            elif p_up < sell_threshold:
-                action = "sell"
+            breakeven_pct = 0.0
+            if quantity > 0:
+                try:
+                    breakeven = estimate_breakeven_move(row_price, quantity, TradeType.INTRADAY)
+                    breakeven_pct = max(0.0, breakeven / row_price)
+                except Exception:
+                    breakeven_pct = 0.0
+
+            tx_cost_pct = breakeven_pct + slippage_pct
+
+            regime_band = float(
+                np.clip(
+                    row_volatility * 0.30 + atr_ratio * 0.75 + tx_cost_pct * 2.5,
+                    0.0,
+                    0.12,
+                )
+            )
+            half_band = float(np.clip(base_half_band + regime_band, 0.02, 0.22))
+            buy_threshold = min(0.92, 0.5 + half_band)
+            sell_threshold = max(0.08, 0.5 - half_band)
+
+            # Translate model probability edge into expected move with volatility scaling.
+            # This keeps returns conservative in low-vol regimes and bounded in high-vol.
+            signal_edge = float((p_up - 0.5) * 2.0)
+            volatility_scale = float(np.clip(row_volatility * 1.15 + atr_ratio * 0.5, 0.01, 0.12))
+            expected_return = float(np.clip(signal_edge * volatility_scale, -0.25, 0.25))
+
+            net_long = expected_return - tx_cost_pct
+            net_short = -expected_return - tx_cost_pct
+            trade_edge = float(max(net_long, net_short))
+
+            action = "hold"
+            no_trade_reason: str | None = None
+            if p_up >= buy_threshold:
+                if net_long > min_edge_pct:
+                    action = "buy"
+                else:
+                    no_trade_reason = "net_edge_below_costs"
+            elif p_up <= sell_threshold:
+                if net_short > min_edge_pct:
+                    action = "sell"
+                else:
+                    no_trade_reason = "net_edge_below_costs"
             else:
-                action = "hold"
+                no_trade_reason = "probability_in_no_trade_band"
+
+            # Keep signed expected return for consistency with direction.
+            # Positive = long bias, negative = short bias.
+            if expected_return >= 0:
+                net_expected_return = expected_return - tx_cost_pct
+            else:
+                net_expected_return = expected_return + tx_cost_pct
 
             confidence = float(max(p_up, p_down))
-            expected_return = float(p_up - 0.5) * 0.10  # scaled direction signal
 
-            net_expected_return = expected_return
-            if price is not None and quantity > 0:
-                breakeven = estimate_breakeven_move(price, quantity, TradeType.INTRADAY)
-                net_expected_return = expected_return - (breakeven / price if price > 0 else 0)
-
-            results.append({
-                "action": action,
-                "confidence": round(confidence, 4),
-                "expected_return": round(expected_return, 6),
-                "net_expected_return": round(net_expected_return, 6),
-            })
+            results.append(
+                {
+                    "action": action,
+                    "confidence": round(confidence, 4),
+                    "expected_return": round(expected_return, 6),
+                    "net_expected_return": round(net_expected_return, 6),
+                    "trade_edge": round(trade_edge, 6),
+                    "buy_threshold": round(buy_threshold, 4),
+                    "sell_threshold": round(sell_threshold, 4),
+                    "breakeven_pct": round(breakeven_pct, 6),
+                    "tx_cost_pct": round(tx_cost_pct, 6),
+                    "no_trade_reason": no_trade_reason,
+                }
+            )
         return results
 
     # ------------------------------------------------------------------

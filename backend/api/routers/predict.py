@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
@@ -63,7 +64,16 @@ async def predict(req: PredictRequest):
     numeric_cols = [c for c in FEATURE_COLUMNS if c not in ("ticker", "date")]
     X = pd.DataFrame([{c: feat_dict[c] for c in numeric_cols}])
 
-    results = model.predict_with_expected_return(X)
+    ref_price = float(feat_dict.get("close", 0.0) or 0.0)
+    if ref_price <= 0:
+        ref_price = 100.0
+    results = model.predict_with_expected_return(
+        X,
+        price=ref_price,
+        quantity=1,
+        min_net_edge_bps=float(os.getenv("PREDICTION_MIN_EDGE_BPS", "6")),
+        slippage_bps=float(os.getenv("PREDICTION_SLIPPAGE_BPS", "2")),
+    )
     r = results[0]
     now = datetime.now(timezone.utc)
     shap_features = _shap_top_features(model, X)
@@ -111,7 +121,16 @@ async def predict_options(req: OptionPredictRequest):
     numeric_cols = [c for c in FEATURE_COLUMNS if c not in ("ticker", "date")]
     X = pd.DataFrame([{c: feat_dict[c] for c in numeric_cols}])
 
-    results = model.predict_with_expected_return(X)
+    ref_price = float(feat_dict.get("close", 0.0) or 0.0)
+    if ref_price <= 0:
+        ref_price = 100.0
+    results = model.predict_with_expected_return(
+        X,
+        price=ref_price,
+        quantity=1,
+        min_net_edge_bps=float(os.getenv("PREDICTION_MIN_EDGE_BPS", "6")),
+        slippage_bps=float(os.getenv("PREDICTION_SLIPPAGE_BPS", "2")),
+    )
     r = results[0]
     now = datetime.now(timezone.utc)
 
@@ -173,7 +192,16 @@ async def batch_predict(req: BatchPredictRequest):
             continue
 
         X = pd.DataFrame([{c: feat_dict[c] for c in numeric_cols}])
-        results = model.predict_with_expected_return(X)
+        ref_price = float(feat_dict.get("close", 0.0) or 0.0)
+        if ref_price <= 0:
+            ref_price = 100.0
+        results = model.predict_with_expected_return(
+            X,
+            price=ref_price,
+            quantity=1,
+            min_net_edge_bps=float(os.getenv("PREDICTION_MIN_EDGE_BPS", "6")),
+            slippage_bps=float(os.getenv("PREDICTION_SLIPPAGE_BPS", "2")),
+        )
         r = results[0]
 
         predictions.append(PredictionEntry(

@@ -3,7 +3,7 @@ import {
   OnInit, OnDestroy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Subject, takeUntil, catchError, of } from 'rxjs';
+import { Subject, takeUntil, catchError, of, switchMap, map } from 'rxjs';
 
 import { AdminApiService } from '../../services/admin-api.service';
 import { AuthService } from '../../services/auth.service';
@@ -61,6 +61,23 @@ export class SysModelsComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
     this.adminApi.getModelStatus().pipe(
       catchError(() => of(null)),
+      switchMap((status) => {
+        const hasModel = !!status?.model_version && status.model_version !== 'none';
+        if (hasModel) return of(status);
+        return this.adminApi.getRegistryVersions().pipe(
+          map((versions) => {
+            if (!versions.length) return status;
+            const active = versions.find(v => v.status === 'active') || versions[0];
+            return {
+              model_version: active.version,
+              status: status?.status || 'loaded',
+              last_trained: active.created_at || null,
+              accuracy: active.accuracy ?? null,
+            } as ModelStatus;
+          }),
+          catchError(() => of(status)),
+        );
+      }),
       takeUntil(this.destroy$),
     ).subscribe(s => {
       this.model = s;

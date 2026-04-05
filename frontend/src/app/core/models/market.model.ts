@@ -13,6 +13,8 @@ export interface MarketStatus {
 export interface AccountProfile {
   status: string;
   message: string;
+  paper_mode?: boolean;
+  service?: string;
   name?: string;
   client_id?: string;
   email?: string;
@@ -23,6 +25,8 @@ export interface AccountProfile {
   available_margin?: number;
   utilized_margin?: number;
   credentials_set?: Record<string, boolean>;
+  credentials_source?: Record<string, string>;
+  missing_credentials?: string[];
 }
 
 export interface LiveTick {

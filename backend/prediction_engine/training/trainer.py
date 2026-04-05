@@ -149,6 +149,8 @@ def _ensure_data_available(
         )
     )
     request_pause_s = float(os.getenv("TRAIN_DOWNLOAD_REQUEST_PAUSE_S", "0.6"))
+    data_source_mode = os.getenv("TRAIN_DATA_SOURCE_MODE", "download_or_cache").strip().lower()
+    download_enabled = data_source_mode not in {"local_only", "cache_only", "offline"}
 
     def _row_count(path: Path) -> int:
         if not path.exists():
@@ -188,9 +190,26 @@ def _ensure_data_available(
         "raw_row_threshold": min_raw_rows,
         "lookback_days": lookback_days,
         "extended_lookback_days": extended_lookback_days,
+        "data_source_mode": data_source_mode,
     }
 
     if not needs_refresh:
+        strict_available = [t for t in tickers if existing_rows.get(t, 0) >= min_raw_rows]
+        if not strict_available:
+            strict_available = [t for t in tickers if existing_rows.get(t, 0) > 0]
+        report["available"] = strict_available
+        report["raw_rows_available"] = {t: int(existing_rows.get(t, 0)) for t in strict_available}
+        if return_report:
+            return strict_available, report
+        return strict_available
+
+    if not download_enabled:
+        logger.warning(
+            "Skipping provider downloads because TRAIN_DATA_SOURCE_MODE=%s",
+            data_source_mode,
+        )
+        for ticker in needs_refresh:
+            report["skipped"][ticker] = "download_disabled"
         strict_available = [t for t in tickers if existing_rows.get(t, 0) >= min_raw_rows]
         if not strict_available:
             strict_available = [t for t in tickers if existing_rows.get(t, 0) > 0]

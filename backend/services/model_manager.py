@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 from pathlib import Path
 
@@ -122,17 +123,40 @@ class ModelManager:
             numeric_cols = [c for c in FEATURE_COLUMNS if c not in ("ticker", "date")]
             X = pd.DataFrame([{c: feat_dict[c] for c in numeric_cols}])
 
-            results = self._model.predict_with_expected_return(X)
+            close_price = float(feat_dict.get("close", 0.0) or 0.0)
+            if close_price <= 0:
+                close_price = 100.0
+
+            reference_capital = float(os.getenv("PREDICTION_REFERENCE_CAPITAL", "100000"))
+            reference_position_pct = float(os.getenv("PREDICTION_REFERENCE_POSITION_PCT", "0.10"))
+            reference_qty = max(1, int((reference_capital * reference_position_pct) / close_price))
+
+            results = self._model.predict_with_expected_return(
+                X,
+                price=close_price,
+                quantity=reference_qty,
+                min_net_edge_bps=float(os.getenv("PREDICTION_MIN_EDGE_BPS", "6")),
+                slippage_bps=float(os.getenv("PREDICTION_SLIPPAGE_BPS", "2")),
+            )
             if not results:
                 return None
 
             r = results[0]
-            predicted_price = float(feat_dict["close"]) * (1 + r["expected_return"])
+            predicted_price = close_price * (1 + r["expected_return"])
             return {
                 "action": r["action"],
                 "confidence": r["confidence"],
                 "expected_return": r["expected_return"],
+                "net_expected_return": r.get("net_expected_return"),
+                "trade_edge": r.get("trade_edge"),
+                "buy_threshold": r.get("buy_threshold"),
+                "sell_threshold": r.get("sell_threshold"),
+                "no_trade_reason": r.get("no_trade_reason"),
                 "predicted_price": predicted_price,
+                "reference_price": close_price,
+                "reference_quantity": reference_qty,
+                "atr_14": float(feat_dict.get("atr_14", 0.0) or 0.0),
+                "volatility_20": float(feat_dict.get("volatility_20", 0.0) or 0.0),
                 "model_version": self._model.get_version(),
                 "calibration_score": r.get("calibration_score"),
             }

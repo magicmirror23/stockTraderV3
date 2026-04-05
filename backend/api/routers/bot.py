@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from functools import partial
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from backend.services.bot_lifecycle import get_bot_manager
 from backend.services.account_verification import get_angel_profile_sync
@@ -41,10 +42,16 @@ async def bot_status():
 
 
 @router.get("/bot/account/profile")
-async def bot_account_profile():
+async def bot_account_profile(
+    mode: str = Query(
+        default="auto",
+        description="auto (paper aware) or live (force live broker verification)",
+    )
+):
     """Verify AngelOne credentials from the trading-service environment."""
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, get_angel_profile_sync)
+    force_live = str(mode).strip().lower() in {"live", "broker", "real"}
+    return await loop.run_in_executor(None, partial(get_angel_profile_sync, force_live))
 
 
 @router.post("/bot/pause")
