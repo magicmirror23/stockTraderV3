@@ -350,4 +350,3 @@ See [DEPLOY.md](DEPLOY.md) and [docs/runbooks.md](docs/runbooks.md) for operatio
 | `ANGEL_CLIENT_ID` | Angel One client ID | -- |
 | `SENTRY_DSN` | Sentry error monitoring DSN | -- |
 | `CELERY_BROKER_URL` | Celery broker (Redis) | `redis://localhost:6379/1` |
-# stockTrader

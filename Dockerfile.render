@@ -6,8 +6,13 @@ WORKDIR /app
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends curl libgomp1 && rm -rf /var/lib/apt/lists/*
 
+# Create venv and install Python deps inside it
+RUN python -m venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ ./backend/
 COPY scripts/ ./scripts/
