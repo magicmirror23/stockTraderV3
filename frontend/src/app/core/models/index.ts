@@ -16,3 +16,4 @@ export * from './paper.model';
 export * from './execution.model';
 export * from './notification.model';
 export * from './view.model';
+export * from './intraday.model';

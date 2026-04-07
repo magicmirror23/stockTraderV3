@@ -37,6 +37,7 @@ from fastapi.responses import FileResponse
 from backend.api.routers import (
     health, predict, model, backtest, trade, admin, paper, stream, market, bot,
     risk, strategy, portfolio, intelligence, options, execution, orchestrator, log,
+    market_data_internal,
 )
 
 # ----- Lifespan: auto-download market data & background refresh -----
@@ -132,6 +133,7 @@ app.include_router(trade.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(paper.router, prefix="/api/v1")
 app.include_router(stream.router, prefix="/api/v1")
+app.include_router(market_data_internal.router, prefix="/api/v1")
 # Register bot router before legacy market router so /bot/* always uses
 # the lifecycle manager implementation.
 app.include_router(bot.router, prefix="/api/v1")

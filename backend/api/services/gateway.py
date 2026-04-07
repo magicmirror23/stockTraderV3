@@ -49,7 +49,15 @@ def _normalize_service_url(raw_value: str | None, fallback: str) -> str:
 MARKET_DATA_URL = _normalize_service_url(os.getenv("MARKET_DATA_URL"), "http://localhost:8001")
 PREDICTION_URL = _normalize_service_url(os.getenv("PREDICTION_URL"), "http://localhost:8002")
 TRADING_URL = _normalize_service_url(os.getenv("TRADING_URL"), "http://localhost:8003")
+RISK_URL = _normalize_service_url(os.getenv("RISK_URL"), TRADING_URL)
 ADMIN_URL = _normalize_service_url(os.getenv("ADMIN_URL"), "http://localhost:8004")
+
+# Intraday stack service URLs
+INTRADAY_FEATURES_URL = _normalize_service_url(os.getenv("INTRADAY_FEATURES_URL"), "http://localhost:8005")
+INTRADAY_PREDICTION_URL = _normalize_service_url(os.getenv("INTRADAY_PREDICTION_URL"), "http://localhost:8006")
+OPTIONS_SIGNAL_URL = _normalize_service_url(os.getenv("OPTIONS_SIGNAL_URL"), "http://localhost:8007")
+EXECUTION_ENGINE_URL = _normalize_service_url(os.getenv("EXECUTION_ENGINE_URL"), "http://localhost:8008")
+TRADE_SUPERVISOR_URL = _normalize_service_url(os.getenv("TRADE_SUPERVISOR_URL"), "http://localhost:8009")
 
 app = FastAPI(
     title="StockTrader API Gateway",
@@ -91,6 +99,20 @@ def _resolve_upstream(path: str) -> str | None:
         return MARKET_DATA_URL
     if p.startswith("api/v1/account/"):
         return MARKET_DATA_URL
+    if p.startswith("api/v1/symbols/"):
+        return MARKET_DATA_URL
+    if p.startswith("api/v1/historical/"):
+        return MARKET_DATA_URL
+    if p.startswith("api/v1/quote/"):
+        return MARKET_DATA_URL
+    if p.startswith("api/v1/provider/status"):
+        return MARKET_DATA_URL
+    if p.startswith("api/v1/jobs/"):
+        return MARKET_DATA_URL
+    if p.startswith("api/v1/status"):
+        return MARKET_DATA_URL
+    if p.startswith("api/v1/health/live") or p.startswith("api/v1/health/ready"):
+        return MARKET_DATA_URL
 
     # Prediction Service
     if p.startswith("api/v1/predict") or p.startswith("api/v1/batch_predict"):
@@ -112,7 +134,7 @@ def _resolve_upstream(path: str) -> str | None:
     if p.startswith("api/v1/bot/") or p.startswith("api/v1/bot"):
         return TRADING_URL
     if p.startswith("api/v1/risk/") or p.startswith("api/v1/portfolio/"):
-        return TRADING_URL
+        return RISK_URL
     if p.startswith("api/v1/options/"):
         return TRADING_URL
     if p.startswith("api/v1/execution/"):
@@ -130,7 +152,52 @@ def _resolve_upstream(path: str) -> str | None:
     if p.startswith("api/v1/log"):
         return ADMIN_URL
 
+    # Intraday Stack Services
+    if p.startswith("api/v1/intraday/features"):
+        return INTRADAY_FEATURES_URL
+    if p.startswith("api/v1/intraday/predict"):
+        return INTRADAY_PREDICTION_URL
+    if p.startswith("api/v1/intraday/options"):
+        return OPTIONS_SIGNAL_URL
+    if p.startswith("api/v1/intraday/execution"):
+        return EXECUTION_ENGINE_URL
+    if p.startswith("api/v1/intraday/supervisor"):
+        return TRADE_SUPERVISOR_URL
+    if p.startswith("api/v1/intraday/train"):
+        return TRADE_SUPERVISOR_URL
+
     return None
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return float(default)
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return float(default)
+
+
+def _timeout_for_path(path: str) -> float:
+    """Path-aware upstream timeout in seconds.
+
+    Retrain and backtests can be legitimately long-running, so they get
+    dedicated higher timeouts instead of the generic API timeout.
+    """
+    p = path.lstrip("/")
+    default_s = _env_float("GATEWAY_UPSTREAM_TIMEOUT_S", 60.0)
+    retrain_s = _env_float("GATEWAY_RETRAIN_TIMEOUT_S", 900.0)
+    backtest_s = _env_float("GATEWAY_BACKTEST_TIMEOUT_S", 600.0)
+    model_reload_s = _env_float("GATEWAY_MODEL_RELOAD_TIMEOUT_S", 120.0)
+
+    if p.startswith("api/v1/retrain"):
+        return max(30.0, retrain_s)
+    if p.startswith("api/v1/backtest"):
+        return max(30.0, backtest_s)
+    if p.startswith("api/v1/model/reload"):
+        return max(15.0, model_reload_s)
+    return max(10.0, default_s)
 
 
 # ── Health check (local) ──────────────────────────────────────────────────
@@ -144,7 +211,13 @@ async def health_check():
             ("market_data", MARKET_DATA_URL),
             ("prediction", PREDICTION_URL),
             ("trading", TRADING_URL),
+            ("portfolio_risk", RISK_URL),
             ("admin", ADMIN_URL),
+            ("intraday_features", INTRADAY_FEATURES_URL),
+            ("intraday_prediction", INTRADAY_PREDICTION_URL),
+            ("options_signal", OPTIONS_SIGNAL_URL),
+            ("execution_engine", EXECUTION_ENGINE_URL),
+            ("trade_supervisor", TRADE_SUPERVISOR_URL),
         ]:
             try:
                 resp = await client.get(f"{url}/api/v1/health")
@@ -178,8 +251,9 @@ async def proxy_rest(request: Request, path: str):
     headers = dict(request.headers)
     # Remove host header to avoid conflicts
     headers.pop("host", None)
+    timeout_s = _timeout_for_path(full_path)
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=timeout_s) as client:
         try:
             resp = await client.request(
                 method=request.method,
@@ -187,6 +261,11 @@ async def proxy_rest(request: Request, path: str):
                 content=body,
                 headers=headers,
             )
+        except httpx.ReadTimeout as exc:
+            raise HTTPException(
+                status_code=504,
+                detail=f"Upstream timeout after {timeout_s:.0f}s for {full_path}",
+            ) from exc
         except httpx.HTTPError as exc:
             raise HTTPException(status_code=502, detail=f"Upstream service unavailable: {exc}") from exc
 

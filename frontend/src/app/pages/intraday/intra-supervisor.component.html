@@ -1,0 +1,104 @@
+<!-- Intraday > Trade Supervisor -->
+@if (loading) {
+  <app-loading-skeleton shape="card" />
+  <app-loading-skeleton shape="card" />
+}
+
+@if (!loading && status) {
+  <!-- State & core metrics -->
+  <div class="is__grid">
+    <div class="card is__state-card">
+      <span class="text-muted" style="font-size:0.75rem;font-weight:600">Supervisor State</span>
+      <app-state-badge [label]="status.state" [variant]="stateBadge()" />
+      @if (status.pause_reason) {
+        <span class="is__pause-reason">{{ status.pause_reason }}</span>
+      }
+    </div>
+    <div class="card is__pnl-card">
+      <span class="text-muted" style="font-size:0.75rem;font-weight:600">Daily P&amp;L</span>
+      <app-pnl-display [value]="status.daily_pnl" prefix="₹" />
+    </div>
+    <app-stat-card label="Peak Equity" [value]="'₹' + (status.peak_equity | number:'1.0-0')" icon="graph-up" />
+    <app-stat-card label="Current Equity" [value]="'₹' + (status.current_equity | number:'1.0-0')" icon="wallet2" />
+    <div class="card is__dd-card">
+      <span class="text-muted" style="font-size:0.75rem;font-weight:600">Drawdown</span>
+      <app-state-badge [label]="(status.drawdown_pct | number:'1.2-2') + '%'" [variant]="drawdownBadge()" />
+    </div>
+    <app-stat-card label="Open Positions" [value]="'' + status.total_open" icon="crosshair" />
+    <app-stat-card label="Trades / Minute" [value]="'' + status.trades_last_minute" icon="speedometer2" />
+  </div>
+
+  <!-- Controls -->
+  <section class="card is__controls">
+    <h3 class="is__section-title"><i class="bi bi-joystick"></i> Controls</h3>
+    <div class="is__btn-row">
+      <button class="btn btn-warning btn-sm" (click)="pause()"
+              [disabled]="pausing || status.state === 'PAUSED' || status.state === 'HALTED'">
+        @if (pausing) { <span class="spinner-border spinner-border-sm"></span> }
+        <i class="bi bi-pause-circle"></i> Pause
+      </button>
+      <button class="btn btn-success btn-sm" (click)="resume()"
+              [disabled]="resuming || status.state === 'ACTIVE'">
+        @if (resuming) { <span class="spinner-border spinner-border-sm"></span> }
+        <i class="bi bi-play-circle"></i> Resume
+      </button>
+      <button class="btn btn-danger btn-sm" (click)="halt()"
+              [disabled]="halting || status.state === 'HALTED'">
+        @if (halting) { <span class="spinner-border spinner-border-sm"></span> }
+        <i class="bi bi-stop-circle"></i> Emergency Halt
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" (click)="load()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+    </div>
+  </section>
+
+  <!-- Cooldowns -->
+  @if (cooldownSymbols().length > 0) {
+    <section class="card is__cooldowns">
+      <h3 class="is__section-title"><i class="bi bi-hourglass-split"></i> Active Cooldowns</h3>
+      <div class="is__cooldown-grid">
+        @for (sym of cooldownSymbols(); track sym) {
+          <div class="is__cooldown-item">
+            <span class="fw-semibold">{{ sym }}</span>
+            <span class="text-muted">{{ status.cooldowns[sym] | number:'1.0-0' }}s remaining</span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  <!-- Pause history -->
+  @if (status.pause_history && status.pause_history.length > 0) {
+    <section class="card is__history">
+      <h3 class="is__section-title"><i class="bi bi-clock-history"></i> Pause History</h3>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Reason</th>
+              <th>State</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of status.pause_history; track $index) {
+              <tr>
+                <td>{{ entry['time'] }}</td>
+                <td>{{ entry['reason'] }}</td>
+                <td>{{ entry['state'] }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+}
+
+@if (!loading && !status) {
+  <div class="alert alert-warning d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-triangle"></i> Trade supervisor not available.
+    <button class="btn btn-sm btn-outline-warning" (click)="load()">Retry</button>
+  </div>
+}

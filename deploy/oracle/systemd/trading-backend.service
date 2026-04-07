@@ -1,0 +1,19 @@
+[Unit]
+Description=Trading Platform Backend Stack (Docker Compose)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/trading-platform
+EnvironmentFile=/opt/trading-platform/.env.production
+ExecStart=/usr/bin/docker compose --env-file /opt/trading-platform/.env.production -f /opt/trading-platform/docker-compose.yml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose --env-file /opt/trading-platform/.env.production -f /opt/trading-platform/docker-compose.yml down
+ExecReload=/usr/bin/docker compose --env-file /opt/trading-platform/.env.production -f /opt/trading-platform/docker-compose.yml up -d --remove-orphans
+TimeoutStartSec=0
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

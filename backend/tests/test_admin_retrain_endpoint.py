@@ -67,3 +67,38 @@ def test_retrain_success_payload_shape(client, monkeypatch):
     assert body["metrics"]["test_accuracy"] == 0.61
     assert "correlation_id" in body
     assert body["correlation_id"]
+
+
+def test_retrain_disabled_in_production_by_default(client, monkeypatch):
+    _reset_retrain_state()
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("INFERENCE_ONLY", "true")
+    monkeypatch.setenv("ALLOW_PROD_RETRAIN", "false")
+
+    res = client.post("/api/v1/retrain")
+    body = res.json()
+
+    assert res.status_code == 403
+    assert body["status"] == "failed"
+    assert body["reason"] == "retrain_disabled"
+    assert body["details"]["disabled_reason"] in {
+        "inference_only_mode",
+        "prod_retrain_disabled",
+    }
+
+
+def test_retrain_maps_invalid_feature_valueerror_to_structured_failure(client, monkeypatch):
+    _reset_retrain_state()
+
+    def _raise_value_error():
+        raise ValueError("Input X contains infinity or a value too large for dtype('float64').")
+
+    monkeypatch.setattr(admin, "_run_train_sync", _raise_value_error)
+
+    res = client.post("/api/v1/retrain")
+    body = res.json()
+
+    assert res.status_code == 200
+    assert body["status"] == "failed"
+    assert body["reason"] == "invalid_feature_values"
+    assert "correlation_id" in body

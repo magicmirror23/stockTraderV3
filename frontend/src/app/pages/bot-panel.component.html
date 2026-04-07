@@ -308,6 +308,7 @@
     <!-- Confirm Dialog -->
     @if (showConfirm) {
       <app-confirm-dialog
+        [open]="showConfirm"
         [title]="confirmConfig.title" [message]="confirmConfig.message"
         [severity]="confirmConfig.severity ?? 'info'" [confirmLabel]="confirmConfig.confirmLabel ?? 'Confirm'"
         (confirm)="onConfirm()" (cancel)="onCancelConfirm()" />

@@ -133,6 +133,20 @@ export const routes: Routes = [
           { path: 'canary', loadComponent: () => import('./pages/system/sys-canary.component').then(m => m.SysCanaryComponent) },
         ],
       },
+
+      // Intraday Trading
+      {
+        path: 'intraday',
+        loadComponent: () => import('./pages/intraday/intraday-shell.component').then(m => m.IntradayShellComponent),
+        canActivate: [authGuard],
+        children: [
+          { path: '', redirectTo: 'models', pathMatch: 'full' },
+          { path: 'models', loadComponent: () => import('./pages/intraday/intra-models.component').then(m => m.IntraModelsComponent) },
+          { path: 'options', loadComponent: () => import('./pages/intraday/intra-options.component').then(m => m.IntraOptionsComponent) },
+          { path: 'execution', loadComponent: () => import('./pages/intraday/intra-execution.component').then(m => m.IntraExecutionComponent) },
+          { path: 'supervisor', loadComponent: () => import('./pages/intraday/intra-supervisor.component').then(m => m.IntraSupervisorComponent) },
+        ],
+      },
     ],
   },
 

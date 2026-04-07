@@ -1,0 +1,60 @@
+{
+  "selected_model": "lightgbm_classifier",
+  "selected_threshold": 0.55,
+  "validation_risk_objective": 7.905889020876255,
+  "validation_trade_count": 30,
+  "test_risk_objective": 0.8133171132029139,
+  "test_sharpe": 0.43801812782411065,
+  "test_sortino": 0.4567666595777163,
+  "test_profit_factor": 0.9825966700978939,
+  "test_max_drawdown": 0.05414888324322431,
+  "test_precision_executed": 0.46551724137931033,
+  "test_trade_count": 58.0,
+  "executed_trade_win_rate": 0.46551724137931033,
+  "classification_accuracy": 0.5349206349206349,
+  "test_accuracy": 0.5349206349206349,
+  "test_roc_auc": 0.5139393939393939,
+  "confusion_matrix": [
+    [
+      26,
+      274
+    ],
+    [
+      19,
+      311
+    ]
+  ],
+  "prediction_distribution": {
+    "mean_score": 0.5235850532308496,
+    "std_score": 0.016059953637168892,
+    "min_score": 0.48415748790304125,
+    "max_score": 0.5644844956171479,
+    "median_score": 0.522868413249966
+  },
+  "precision_at_5": 0.4,
+  "avg_return_top_5": 0.00011077978591087501,
+  "precision_at_10": 0.4,
+  "avg_return_top_10": -0.001206711756222345,
+  "precision_at_20": 0.3,
+  "avg_return_top_20": -0.003313571493289269,
+  "top_decile_precision": 0.47058823529411764,
+  "top_decile_avg_return": -0.000781999649118907,
+  "information_coefficient": -0.0055073143597674755,
+  "ic_pvalue": 0.8295760340139746,
+  "mean_daily_ic": 0.020546003016591253,
+  "std_daily_ic": 0.16996364082099016,
+  "ic_positive_pct": 0.5666666666666667,
+  "top_n_backtest": {
+    "top_n": 10,
+    "trading_days": 30,
+    "total_trades": 300,
+    "winning_trades": 158,
+    "win_rate": 0.5267,
+    "total_return_pct": 7.5664,
+    "sharpe": 3.9469,
+    "sortino": 4.8257,
+    "max_drawdown": 0.0543,
+    "avg_daily_return": 0.002483,
+    "avg_selected_return": 0.002483
+  }
+}

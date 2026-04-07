@@ -96,6 +96,44 @@ def load_training_config() -> TrainingConfig:
     )
 
 
+def _load_default_training_universe() -> tuple[list[str], dict]:
+    """Load default training tickers from the configured universe snapshot."""
+    universe_version = (
+        os.getenv("TRAIN_UNIVERSE_VERSION", "").strip()
+        or os.getenv("UNIVERSE_VERSION", "universe_v1").strip()
+    )
+    universe_as_of = (
+        os.getenv("TRAIN_UNIVERSE_AS_OF_DATE", "").strip()
+        or os.getenv("UNIVERSE_AS_OF_DATE", "").strip()
+        or None
+    )
+
+    try:
+        from backend.ml_platform.universe_builder import UniverseBuilder
+
+        snapshot = UniverseBuilder().build_snapshot(
+            version=universe_version,
+            as_of_date=universe_as_of,
+            force_rebuild=False,
+        )
+        symbols = list(snapshot.get("selected_symbols", []))
+        if symbols:
+            return symbols, {
+                "version": snapshot.get("universe_version", universe_version),
+                "label": snapshot.get("universe_label"),
+                "as_of_date": snapshot.get("as_of_date"),
+                "snapshot_path": snapshot.get("snapshot_path"),
+                "candidate_count": snapshot.get("candidate_count"),
+                "selected_count": snapshot.get("selected_count"),
+            }
+    except Exception as exc:
+        logger.warning("Universe snapshot unavailable (%s); fallback to scripts/sample_data/tickers.txt", exc)
+
+    ticker_file = REPO_ROOT / "scripts" / "sample_data" / "tickers.txt"
+    symbols = [t.strip() for t in ticker_file.read_text().splitlines() if t.strip()]
+    return symbols, {"version": "legacy_tickers_file", "source": str(ticker_file)}
+
+
 # ---------------------------------------------------------------------------
 # Auto-download data if missing
 # ---------------------------------------------------------------------------
@@ -107,15 +145,12 @@ def _ensure_data_available(
     config: TrainingConfig | None = None,
     return_report: bool = False,
 ) -> list[str] | tuple[list[str], dict]:
-    """Ensure raw CSV history is sufficient for feature generation + safe splits."""
+    """Ensure CSV data from local store is sufficient for safe training."""
     data_dir.mkdir(parents=True, exist_ok=True)
     cfg = config or load_training_config()
-    try:
-        from backend.prediction_engine.data_pipeline.providers import SymbolMapper
-        _symbol_overrides = dict(SymbolMapper.SYMBOL_OVERRIDES)
-    except Exception:
-        _symbol_overrides = {}
+    data_source_mode = os.getenv("TRAIN_DATA_SOURCE_MODE", "local_store_only").strip().lower()
 
+    # Feature generation uses long-window indicators (e.g. SMA-200).
     feature_warmup_rows = int(os.getenv("TRAIN_FEATURE_WARMUP_ROWS", "260"))
     min_feature_rows = max(
         cfg.min_rows_per_symbol,
@@ -127,30 +162,20 @@ def _ensure_data_available(
             str(max(260, min_feature_rows + feature_warmup_rows)),
         )
     )
-
     lookback_days = int(
         os.getenv(
             "TRAIN_DOWNLOAD_LOOKBACK_DAYS",
-            os.getenv("TRAIN_LOOKBACK_DAYS", "730"),
+            os.getenv("TRAIN_LOOKBACK_DAYS", "1095"),
         )
     )
     lookback_days = max(365, lookback_days)
-    extended_lookback_days = int(
-        os.getenv(
-            "TRAIN_DOWNLOAD_EXTENDED_LOOKBACK_DAYS",
-            str(max(lookback_days * 2, 1460)),
-        )
-    )
-    extended_lookback_days = max(lookback_days, extended_lookback_days)
-    download_target_symbols = int(
-        os.getenv(
-            "TRAIN_DOWNLOAD_TARGET_SYMBOLS",
-            str(max(cfg.min_symbols + 2, cfg.min_symbols)),
-        )
-    )
-    request_pause_s = float(os.getenv("TRAIN_DOWNLOAD_REQUEST_PAUSE_S", "0.6"))
-    data_source_mode = os.getenv("TRAIN_DATA_SOURCE_MODE", "download_or_cache").strip().lower()
-    download_enabled = data_source_mode not in {"local_only", "cache_only", "offline"}
+
+    try:
+        from backend.prediction_engine.data_pipeline.providers import SymbolMapper
+
+        _symbol_overrides = dict(SymbolMapper.SYMBOL_OVERRIDES)
+    except Exception:
+        _symbol_overrides = {}
 
     def _row_count(path: Path) -> int:
         if not path.exists():
@@ -164,13 +189,13 @@ def _ensure_data_available(
                 return 0
 
     def _candidate_paths(ticker: str) -> list[Path]:
-        """Return possible on-disk CSV names for a logical symbol."""
         base = str(ticker).strip().upper()
         names = {base}
         mapped = _symbol_overrides.get(base)
         if mapped:
-            names.add(mapped.upper())
-            names.add(mapped.replace("&", "_").replace("-", "_").upper())
+            mapped_up = mapped.upper()
+            names.add(mapped_up)
+            names.add(mapped_up.replace("&", "_").replace("-", "_"))
         return [data_dir / f"{name}.csv" for name in sorted(names)]
 
     def _best_existing_rows(ticker: str) -> int:
@@ -186,136 +211,47 @@ def _ensure_data_available(
         "missing": missing,
         "undersized": undersized,
         "downloaded": [],
+        "hydrated": [],
         "skipped": {},
         "raw_row_threshold": min_raw_rows,
         "lookback_days": lookback_days,
-        "extended_lookback_days": extended_lookback_days,
         "data_source_mode": data_source_mode,
     }
 
-    if not needs_refresh:
-        strict_available = [t for t in tickers if existing_rows.get(t, 0) >= min_raw_rows]
-        if not strict_available:
-            strict_available = [t for t in tickers if existing_rows.get(t, 0) > 0]
-        report["available"] = strict_available
-        report["raw_rows_available"] = {t: int(existing_rows.get(t, 0)) for t in strict_available}
-        if return_report:
-            return strict_available, report
-        return strict_available
+    # No external provider calls from training path.
+    use_local_store = data_source_mode not in {"csv_only", "legacy_csv_only"}
+    if use_local_store and needs_refresh:
+        from backend.market_data_service.local_access import LocalMarketDataAccess
 
-    if not download_enabled:
-        logger.warning(
-            "Skipping provider downloads because TRAIN_DATA_SOURCE_MODE=%s",
-            data_source_mode,
+        access = LocalMarketDataAccess()
+        end_date = datetime.now(timezone.utc).date().isoformat()
+        start_date = (datetime.now(timezone.utc).date() - timedelta(days=lookback_days)).isoformat()
+        hydrate_results = access.hydrate_symbols_to_csv(
+            needs_refresh,
+            data_dir=data_dir,
+            start_date=start_date,
+            end_date=end_date,
+            interval="1d",
+            min_rows=min_raw_rows,
         )
-        for ticker in needs_refresh:
-            report["skipped"][ticker] = "download_disabled"
-        strict_available = [t for t in tickers if existing_rows.get(t, 0) >= min_raw_rows]
-        if not strict_available:
-            strict_available = [t for t in tickers if existing_rows.get(t, 0) > 0]
-        report["available"] = strict_available
-        report["raw_rows_available"] = {t: int(existing_rows.get(t, 0)) for t in strict_available}
-        if return_report:
-            return strict_available, report
-        return strict_available
 
-    logger.info(
-        "Refreshing data for %d tickers (missing=%d, undersized=%d, min_raw_rows=%d)",
-        len(needs_refresh),
-        len(missing),
-        len(undersized),
-        min_raw_rows,
-    )
-    try:
-        from backend.prediction_engine.data_pipeline.connector_yahoo import YahooConnector
+        for item in hydrate_results:
+            if item.status == "ok":
+                report["hydrated"].append(item.symbol)
+            else:
+                report["skipped"][item.symbol] = item.reason or "not_in_local_store"
 
-        connector = YahooConnector(
-            max_retries=int(os.getenv("TRAIN_DOWNLOAD_PROVIDER_RETRIES", "2")),
-            retry_delay_s=float(os.getenv("TRAIN_DOWNLOAD_RETRY_DELAY_S", "1.5")),
-        )
-        outer_retries = max(1, int(os.getenv("TRAIN_DOWNLOAD_OUTER_RETRIES", "1")))
-        outer_backoff_s = float(os.getenv("TRAIN_DOWNLOAD_OUTER_BACKOFF_S", "2.0"))
-        end_ts = datetime.now()
-
-        downloaded = 0
-        for ticker in needs_refresh:
-            success = False
-            for attempt in range(1, outer_retries + 1):
-                try:
-                    window_days_options = [lookback_days]
-                    if extended_lookback_days > lookback_days:
-                        window_days_options.append(extended_lookback_days)
-
-                    last_df: pd.DataFrame | None = None
-                    for window_days in window_days_options:
-                        start_ts = end_ts - timedelta(days=window_days)
-                        df = connector.fetch(ticker, start_ts, end_ts)
-                        last_df = df
-                        if len(df) >= min_raw_rows:
-                            break
-                        logger.warning(
-                            "Downloaded %s but only %d rows (required >= %d) using %d-day lookback",
-                            ticker,
-                            len(df),
-                            min_raw_rows,
-                            window_days,
-                        )
-
-                    if last_df is not None and len(last_df) >= min_raw_rows:
-                        path = data_dir / f"{ticker}.csv"
-                        last_df.to_csv(path, index=False)
-                        existing_rows[ticker] = int(len(last_df))
-                        downloaded += 1
-                        success = True
-                        report["downloaded"].append(ticker)
-                        logger.info("Downloaded %s (%d rows)", ticker, len(last_df))
-                        break
-
-                    rows = int(len(last_df)) if last_df is not None else 0
-                    logger.warning("Skipping %s - only %d rows (required >= %d)", ticker, rows, min_raw_rows)
-                    report["skipped"][ticker] = f"insufficient_rows:{rows}"
-                except Exception as exc:
-                    logger.warning(
-                        "Failed to download %s on attempt %d/%d: %s",
-                        ticker,
-                        attempt,
-                        outer_retries,
-                        exc,
-                    )
-                    report["skipped"][ticker] = str(exc)
-
-                if attempt < outer_retries:
-                    backoff_s = outer_backoff_s * attempt
-                    logger.info("Retrying %s in %.1fs", ticker, backoff_s)
-                    time.sleep(backoff_s)
-
-            if not success:
-                logger.warning("Unable to fetch usable data for %s after retries", ticker)
-                report["skipped"].setdefault(ticker, "retry_exhausted")
-
-            if request_pause_s > 0:
-                time.sleep(request_pause_s)
-
-            strong_count = sum(1 for rows in existing_rows.values() if rows >= min_raw_rows)
-            if strong_count >= max(cfg.min_symbols, download_target_symbols):
-                logger.info(
-                    "Reached strong-data target (%d symbols with >= %d rows), stopping refresh loop",
-                    strong_count,
-                    min_raw_rows,
-                )
-                break
-
-        logger.info("Downloaded %d/%d required tickers", downloaded, len(needs_refresh))
-    except ImportError:
-        logger.error("yfinance not installed - cannot auto-download data")
-        for ticker in needs_refresh:
-            report["skipped"].setdefault(ticker, "yfinance_not_installed")
-
+    # Re-check after potential hydration.
+    existing_rows = {ticker: _best_existing_rows(ticker) for ticker in tickers}
     available_tickers = [t for t in tickers if existing_rows.get(t, 0) >= min_raw_rows]
     if len(available_tickers) < cfg.min_symbols:
         fallback = [t for t in tickers if existing_rows.get(t, 0) > 0]
         if fallback:
             available_tickers = fallback
+
+    if not available_tickers:
+        for ticker in tickers:
+            report["skipped"].setdefault(ticker, "insufficient_local_data")
 
     report["available"] = available_tickers
     report["raw_rows_available"] = {t: int(existing_rows.get(t, 0)) for t in available_tickers}
@@ -328,27 +264,56 @@ def _ensure_data_available(
 # Label construction
 # ---------------------------------------------------------------------------
 
-def _build_labels(df: pd.DataFrame, horizon: int = 3, threshold: float = 0.001) -> pd.Series:
-    """Create binary labels based on future returns for direction prediction.
+def _build_labels(
+    df: pd.DataFrame,
+    horizon: int = 3,
+    threshold: float = 0.001,
+    mode: str = "direction",
+    top_pct: float = 0.20,
+    bottom_pct: float = 0.20,
+) -> pd.Series:
+    """Create labels for training.
 
-    Uses simple direction of future returns to create a binary classification
-    task (easier to learn, 50% baseline). The model's confidence is then used
-    at inference to map to buy/sell/hold.
+    Modes
+    -----
+    "direction"  : Legacy binary labels: 1 if future_ret > threshold, 0 if < -threshold, NaN otherwise.
+    "ranking"    : Cross-sectional ranking: 1 = top bucket, 0 = bottom bucket, NaN = middle.
+    "regression" : Raw forward return (continuous target).
 
-    Classes
+    Returns
     -------
-    0 = down  (future return < -threshold)
-    1 = up    (future return > +threshold)
-    NaN = ambiguous / no future data
+    pd.Series with labels (or NaN for rows to drop).
     """
     future_ret = df.groupby("ticker")["close"].transform(
         lambda s: s.shift(-horizon) / s - 1
     )
 
+    if mode == "regression":
+        return future_ret
+
+    if mode == "ranking":
+        # Cross-sectional percentile ranking per date
+        pct_rank = df.assign(_fret=future_ret).groupby("date")["_fret"].transform(
+            lambda s: s.rank(pct=True)
+        )
+        labels = pd.Series(np.nan, index=df.index)
+        labels[pct_rank >= (1.0 - top_pct)] = 1      # top bucket
+        labels[pct_rank <= bottom_pct] = 0             # bottom bucket
+        # middle bucket stays NaN → will be dropped
+        return labels
+
+    # Default: direction mode (legacy)
     labels = pd.Series(np.nan, index=df.index)
     labels[future_ret > threshold] = 1   # up
     labels[future_ret < -threshold] = 0  # down
     return labels
+
+
+def _build_forward_returns(df: pd.DataFrame, horizon: int = 3) -> pd.Series:
+    """Compute raw forward returns for evaluation/ranking."""
+    return df.groupby("ticker")["close"].transform(
+        lambda s: s.shift(-horizon) / s - 1
+    )
 
 
 # Features that are already bounded / normalised and should NOT be z-scored
@@ -556,7 +521,21 @@ NUMERIC_FEATURES = [
     "force_index", "high_low_ratio",
     "return_mean_5", "return_mean_10", "return_skew_10",
     "volume_change", "close_to_ma20", "close_to_ma50",
-    "return_lag_1", "return_lag_5", "day_of_week",
+    "return_lag_1", "return_lag_5",
+    # day_of_week disabled by default (noise for daily models)
+]
+
+# Cross-sectional / benchmark-relative features (added in build_features post-concat step)
+CROSS_SECTIONAL_FEATURES = [
+    "stock_return_1d_minus_benchmark_1d",
+    "stock_return_5d_minus_benchmark_5d",
+    "sector_relative_strength_5d",
+    "sector_relative_strength_20d",
+    "benchmark_relative_momentum",
+    "market_breadth_feature",
+    "sector_breadth_feature",
+    "beta_to_benchmark",
+    "rolling_corr_to_benchmark",
 ]
 
 
@@ -674,12 +653,10 @@ def train(
     np.random.seed(seed)
     data_dir = Path(data_dir)
     cfg = load_training_config()
+    universe_meta: dict = {}
 
     if tickers is None:
-        ticker_file = REPO_ROOT / "scripts" / "sample_data" / "tickers.txt"
-        tickers = [
-            t.strip() for t in ticker_file.read_text().splitlines() if t.strip()
-        ]
+        tickers, universe_meta = _load_default_training_universe()
 
     # Auto-download data if missing
     tickers, data_report = _ensure_data_available(
@@ -811,18 +788,40 @@ def train(
         class_weight=sample_weights,
     )
 
-    # Test evaluation â€” binary accuracy (direction prediction)
+    # Threshold tuning on VALIDATION split only (never test)
+    val_proba = model.predict_proba(X_val)
+    if val_proba.ndim == 2:
+        val_proba = val_proba[:, 1] if val_proba.shape[1] == 2 else val_proba[:, 0]
+    best_thresh, _ = _find_optimal_threshold(val_proba, y_val.values)
+
+    # Test evaluation -- binary accuracy (direction prediction)
     test_proba = model.predict_proba(X_test)
     if test_proba.ndim == 2:
         test_proba = test_proba[:, 1] if test_proba.shape[1] == 2 else test_proba[:, 0]
 
-    # Optimal threshold search (demo.py strategy)
-    best_thresh, best_acc = _find_optimal_threshold(test_proba, y_test.values)
     test_binary_preds = (test_proba >= best_thresh).astype(int)
     binary_accuracy = float((test_binary_preds == y_test.values).mean())
     binary_f1 = float(f1_score(y_test.values, test_binary_preds, average="binary", zero_division=0))
     binary_precision = float(precision_score(y_test.values, test_binary_preds, average="binary", zero_division=0))
     binary_recall = float(recall_score(y_test.values, test_binary_preds, average="binary", zero_division=0))
+
+    # ROC AUC
+    from sklearn.metrics import roc_auc_score, confusion_matrix as cm_func
+    try:
+        test_roc_auc = float(roc_auc_score(y_test.values, test_proba))
+    except ValueError:
+        test_roc_auc = 0.0
+
+    # Confusion matrix
+    conf_matrix = cm_func(y_test.values, test_binary_preds).tolist()
+
+    # Prediction distribution
+    pred_dist = {
+        "class_0_count": int((test_binary_preds == 0).sum()),
+        "class_1_count": int((test_binary_preds == 1).sum()),
+        "mean_proba": float(test_proba.mean()),
+        "std_proba": float(test_proba.std()),
+    }
 
     # 3-class mapping accuracy (how the model would output buy/sell/hold)
     test_3class = model.predict(X_test)
@@ -831,8 +830,27 @@ def train(
     metrics["test_f1"] = binary_f1
     metrics["test_precision"] = binary_precision
     metrics["test_recall"] = binary_recall
+    metrics["test_roc_auc"] = test_roc_auc
     metrics["optimal_threshold"] = best_thresh
-    logger.info("Optimal threshold: %.2f", best_thresh)
+    metrics["threshold_source"] = "validation_only"
+    metrics["confusion_matrix"] = conf_matrix
+    metrics["prediction_distribution"] = pred_dist
+
+    # --- Diagnostics / alerts ---
+    diagnostics = []
+    if test_roc_auc < 0.5:
+        diagnostics.append({"level": "critical", "message": f"ROC AUC ({test_roc_auc:.3f}) is below 0.5 -- model is worse than random."})
+    if pred_dist["class_0_count"] == 0 or pred_dist["class_1_count"] == 0:
+        diagnostics.append({"level": "critical", "message": "Model predicts only one class -- degenerate classifier."})
+    elif min(pred_dist["class_0_count"], pred_dist["class_1_count"]) / max(pred_dist["class_0_count"], pred_dist["class_1_count"]) < 0.05:
+        diagnostics.append({"level": "warning", "message": "Model predicts >95% of one class -- near-degenerate."})
+    if diagnostics:
+        metrics["diagnostics"] = diagnostics
+        for d in diagnostics:
+            logger.warning("DIAGNOSTIC [%s]: %s", d["level"], d["message"])
+
+    logger.info("Optimal threshold (from val): %.2f", best_thresh)
+    logger.info("Test ROC AUC: %.4f", test_roc_auc)
     logger.info("Binary direction accuracy: %.4f | F1: %.4f | Precision: %.4f | Recall: %.4f",
                 binary_accuracy, binary_f1, binary_precision, binary_recall)
     logger.info("3-class mapping: buy=%d, hold=%d, sell=%d",
@@ -868,6 +886,8 @@ def train(
             "download_report": data_report,
         },
     }
+    if universe_meta:
+        entry["universe"] = universe_meta
     _update_registry(entry)
     return entry
 
@@ -879,7 +899,8 @@ def train(
 def _find_optimal_threshold(proba: np.ndarray, y_true: np.ndarray) -> tuple[float, float]:
     """Search for the decision threshold that maximises accuracy.
 
-    Scans from 0.40 to 0.62 in 0.01 steps (same range as demo.py).
+    IMPORTANT: This must only be called on the VALIDATION split, never test.
+    Scans from 0.40 to 0.62 in 0.01 steps.
     Returns (best_threshold, best_accuracy).
     """
     best_acc, best_thresh = 0.0, 0.5
@@ -916,10 +937,10 @@ def train_hybrid(
     np.random.seed(seed)
 
     cfg = load_training_config()
+    universe_meta: dict = {}
 
     if tickers is None:
-        ticker_file = REPO_ROOT / "scripts" / "sample_data" / "tickers.txt"
-        tickers = [t.strip() for t in ticker_file.read_text().splitlines() if t.strip()]
+        tickers, universe_meta = _load_default_training_universe()
 
     # Auto-download data if missing
     tickers = _ensure_data_available(tickers, Path(data_dir), config=cfg)
@@ -1063,6 +1084,8 @@ def train_hybrid(
         "artifact_path": str(artifact_path.relative_to(REPO_ROOT)),
         "tickers_count": len(tickers),
     }
+    if universe_meta:
+        entry["universe"] = universe_meta
     _update_registry(entry)
     return entry
 
@@ -1081,10 +1104,10 @@ def train_ensemble(
     np.random.seed(seed)
 
     cfg = load_training_config()
+    universe_meta: dict = {}
 
     if tickers is None:
-        ticker_file = REPO_ROOT / "scripts" / "sample_data" / "tickers.txt"
-        tickers = [t.strip() for t in ticker_file.read_text().splitlines() if t.strip()]
+        tickers, universe_meta = _load_default_training_universe()
 
     # Auto-download data if missing
     tickers = _ensure_data_available(tickers, Path(data_dir), config=cfg)
@@ -1169,6 +1192,8 @@ def train_ensemble(
         "artifact_path": str(artifact_path.relative_to(REPO_ROOT)),
         "tickers_count": len(tickers),
     }
+    if universe_meta:
+        entry["universe"] = universe_meta
     _update_registry(entry)
     return entry
 

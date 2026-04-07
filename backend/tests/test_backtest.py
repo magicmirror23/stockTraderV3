@@ -8,6 +8,9 @@ import pytest
 from backend.prediction_engine.backtest.backtester import Backtester, ExecutionConfig
 from backend.trading_engine.simulator import PaperSimulator, OrderIntent
 from backend.api.routers.backtest import _build_execution_predictions
+from backend.shared.leakage import LeakageError
+from backend.shared.schemas import PortfolioState, RiskLimits
+from backend.shared.strategy_engine import StrategyEngine
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +62,163 @@ def test_backtester_metrics():
     result = bt.run(predictions, prices)
 
     assert result.sharpe_ratio is not None or result.max_drawdown_pct is not None
+
+
+def test_event_execution_occurs_after_signal_timestamp():
+    dates = pd.date_range("2025-01-01", periods=5, freq="B")
+    predictions = pd.DataFrame(
+        {
+            "date": [dates[1], dates[2]],
+            "signal_date": [dates[0], dates[1]],
+            "ticker": ["TEST", "TEST"],
+            "action": ["buy", "sell"],
+            "confidence": [0.9, 0.9],
+            "volatility_20": [0.2, 0.2],
+            "atr_14": [2.0, 2.0],
+            "momentum_10": [0.05, 0.05],
+            "ema_crossover": [0.1, 0.1],
+            "adx_14": [24, 24],
+            "rsi_14": [52, 52],
+            "distance_sma50": [0.01, 0.01],
+        }
+    )
+    prices = pd.DataFrame(
+        {
+            "Date": dates,
+            "ticker": "TEST",
+            "Close": [100.0, 102.0, 104.0, 106.0, 108.0],
+        }
+    )
+
+    bt = Backtester(
+        ExecutionConfig(
+            slippage_pct=0.0,
+            fill_probability=1.0,
+            commission_per_trade=0.0,
+            use_angel_charges=False,
+            execution_delay_bars=1,
+        )
+    )
+    result = bt.run(predictions, prices, initial_capital=100_000.0)
+    assert result.total_trades >= 1
+    timed_trades = [t for t in result.trades if t.signal_time and t.execution_time]
+    assert timed_trades
+    for tr in timed_trades:
+        assert pd.Timestamp(tr.execution_time) > pd.Timestamp(tr.signal_time)
+
+
+def test_backtester_rejects_signal_dates_after_execution_date():
+    dates = pd.date_range("2025-01-01", periods=3, freq="B")
+    predictions = pd.DataFrame(
+        {
+            "date": [dates[0]],
+            "signal_date": [dates[1]],
+            "ticker": ["TEST"],
+            "action": ["buy"],
+            "confidence": [0.9],
+        }
+    )
+    prices = pd.DataFrame({"Date": dates, "ticker": "TEST", "Close": [100.0, 101.0, 102.0]})
+
+    bt = Backtester(ExecutionConfig(fill_probability=1.0))
+    with pytest.raises(LeakageError):
+        bt.run(predictions, prices)
+
+
+def test_backtester_slippage_and_commission_applied_on_round_trip():
+    dates = pd.date_range("2025-01-01", periods=4, freq="B")
+    predictions = pd.DataFrame(
+        {
+            "date": [dates[1], dates[2]],
+            "signal_date": [dates[0], dates[1]],
+            "ticker": ["TEST", "TEST"],
+            "action": ["buy", "sell"],
+            "confidence": [0.85, 0.85],
+            "volatility_20": [0.2, 0.2],
+            "atr_14": [2.0, 2.0],
+            "momentum_10": [0.05, 0.05],
+            "ema_crossover": [0.1, 0.1],
+            "adx_14": [24, 24],
+            "rsi_14": [52, 52],
+            "distance_sma50": [0.01, 0.01],
+        }
+    )
+    prices = pd.DataFrame(
+        {
+            "Date": dates,
+            "ticker": "TEST",
+            "Close": [100.0, 110.0, 120.0, 120.0],
+        }
+    )
+
+    bt = Backtester(
+        ExecutionConfig(
+            slippage_pct=0.01,
+            fill_probability=1.0,
+            commission_per_trade=5.0,
+            use_angel_charges=False,
+            execution_delay_bars=1,
+        )
+    )
+    result = bt.run(predictions, prices, initial_capital=100_000.0)
+
+    buy_trades = [t for t in result.trades if t.side == "buy"]
+    sell_trades = [t for t in result.trades if t.side == "sell"]
+    assert buy_trades and sell_trades
+    buy = buy_trades[0]
+    sell = sell_trades[-1]
+    assert pytest.approx(111.10, rel=1e-6) == buy.price
+    assert pytest.approx(118.80, rel=1e-6) == sell.price
+
+    qty = buy.quantity
+    expected_pnl = (sell.price - buy.price) * qty - 10.0
+    assert pytest.approx(expected_pnl, rel=1e-6) == sell.pnl
+
+
+def test_backtester_uses_same_strategy_sizing_logic():
+    dates = pd.date_range("2025-01-01", periods=4, freq="B")
+    predictions = pd.DataFrame(
+        {
+            "date": [dates[1]],
+            "signal_date": [dates[0]],
+            "ticker": ["TEST"],
+            "action": ["buy"],
+            "confidence": [0.8],
+            "volatility_20": [0.2],
+            "atr_14": [2.0],
+            "momentum_10": [0.05],
+            "ema_crossover": [0.1],
+            "adx_14": [24],
+            "rsi_14": [52],
+            "distance_sma50": [0.01],
+        }
+    )
+    prices = pd.DataFrame(
+        {"Date": dates, "ticker": "TEST", "Close": [100.0, 101.0, 102.0, 103.0]}
+    )
+
+    bt = Backtester(
+        ExecutionConfig(
+            slippage_pct=0.0,
+            fill_probability=1.0,
+            commission_per_trade=0.0,
+            use_angel_charges=False,
+            execution_delay_bars=1,
+        ),
+        risk_limits=RiskLimits(),
+    )
+
+    signal = bt._to_signal(predictions.iloc[0])  # parity with backtester signal construction
+    strategy = StrategyEngine(RiskLimits())
+    portfolio = PortfolioState(cash=100_000.0)
+    expected_orders = strategy.build_orders([signal], portfolio, {"TEST": 100.0})
+    assert expected_orders
+    expected_qty = expected_orders[0].quantity
+
+    result = bt.run(predictions, prices, initial_capital=100_000.0)
+    buy_trades = [t for t in result.trades if t.side == "buy"]
+    assert buy_trades
+    assert buy_trades[0].quantity == expected_qty
 
 
 def test_build_execution_predictions_shifts_to_next_bar():

@@ -1,0 +1,68 @@
+<!-- Intraday > Options Signals -->
+<section class="card io__form">
+  <h3 class="io__section-title"><i class="bi bi-bar-chart-steps"></i> Generate F&amp;O Signal</h3>
+  <div class="io__form-grid">
+    <div class="io__field">
+      <label class="form-label">Symbol</label>
+      <input class="form-control form-control-sm" [(ngModel)]="symbol" />
+    </div>
+    <div class="io__field">
+      <label class="form-label">Underlying Price</label>
+      <input class="form-control form-control-sm" type="number" [(ngModel)]="underlyingPrice" />
+    </div>
+    <div class="io__field">
+      <label class="form-label">Trend</label>
+      <select class="form-select form-select-sm" [(ngModel)]="underlyingTrend">
+        <option value="bullish">Bullish</option>
+        <option value="bearish">Bearish</option>
+        <option value="neutral">Neutral</option>
+      </select>
+    </div>
+    <div class="io__field">
+      <label class="form-label">Confidence</label>
+      <input class="form-control form-control-sm" type="number" step="0.05" min="0" max="1"
+             [(ngModel)]="trendConfidence" />
+    </div>
+  </div>
+  <button class="btn btn-primary btn-sm mt-2" (click)="generate()" [disabled]="loading">
+    @if (loading) { <span class="spinner-border spinner-border-sm"></span> }
+    Generate Signal
+  </button>
+</section>
+
+@if (signal) {
+  <div class="io__result">
+    <div class="io__grid">
+      <div class="card io__signal-card">
+        <span class="text-muted" style="font-size:0.75rem;font-weight:600">Signal Type</span>
+        <app-state-badge [label]="signal.signal_type" [variant]="signalBadge()" />
+      </div>
+      <app-stat-card label="Direction" [value]="signal.direction" icon="arrow-up-right" />
+      <app-stat-card label="Confidence" [value]="(signal.confidence * 100 | number:'1.1-1') + '%'" icon="bullseye" />
+      <app-stat-card label="Risk / Reward" [value]="(signal.risk_reward | number:'1.2-2') ?? ''" icon="percent" />
+      <app-stat-card label="Entry Strike" [value]="(signal.entry_strike | number:'1.0-0') ?? ''" icon="tag" />
+      <app-stat-card label="Exit Strike" [value]="(signal.exit_strike | number:'1.0-0') ?? ''" icon="tag-fill" />
+      <app-stat-card label="Max Loss" [value]="'₹' + (signal.max_loss | number:'1.0-0')" icon="dash-circle" />
+      <app-stat-card label="Max Profit" [value]="'₹' + (signal.max_profit | number:'1.0-0')" icon="plus-circle" />
+      <app-stat-card label="Breakeven" [value]="(signal.breakeven | number:'1.0-0') ?? ''" icon="dash-lg" />
+      <app-stat-card label="Volatility Regime" [value]="signal.volatility_regime" icon="activity" />
+    </div>
+
+    @if (signal.reasoning && signal.reasoning.length > 0) {
+      <section class="card io__reasoning">
+        <h3 class="io__section-title"><i class="bi bi-lightbulb"></i> Reasoning</h3>
+        <ul class="io__reasoning-list">
+          @for (reason of signal.reasoning; track reason) {
+            <li>{{ reason }}</li>
+          }
+        </ul>
+      </section>
+    }
+
+    @if (!signal.eligible) {
+      <div class="alert alert-warning d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-triangle"></i> {{ signal.rejection_reason }}
+      </div>
+    }
+  </div>
+}

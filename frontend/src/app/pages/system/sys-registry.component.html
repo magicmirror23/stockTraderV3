@@ -12,7 +12,8 @@
           <tr>
             <th>Version</th>
             <th>Created</th>
-            <th>Accuracy</th>
+            <th>Classification Accuracy</th>
+            <th>Trade Win Rate</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -22,6 +23,7 @@
               <td class="font-monospace fw-bold">{{ v.version }}</td>
               <td>{{ v.created_at | date:'medium' }}</td>
               <td>{{ v.accuracy != null ? (v.accuracy * 100 | number:'1.1-1') + '%' : 'N/A' }}</td>
+              <td>{{ v.executed_trade_win_rate != null ? (v.executed_trade_win_rate * 100 | number:'1.1-1') + '%' : 'N/A' }}</td>
               <td><app-state-badge [label]="v.status || 'archived'" [variant]="statusBadge(v)" /></td>
             </tr>
           }

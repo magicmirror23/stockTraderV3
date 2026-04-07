@@ -1,0 +1,87 @@
+<!-- Intraday > Execution Monitor -->
+@if (loading) {
+  <app-loading-skeleton shape="card" />
+  <app-loading-skeleton shape="card" />
+  <app-loading-skeleton shape="table" />
+}
+
+@if (!loading && stats) {
+  <div class="ie__grid">
+    <app-stat-card label="Open Positions" [value]="'' + stats.open_positions" icon="crosshair" />
+    <app-stat-card label="Trades Today" [value]="'' + stats.trades_today" icon="lightning" />
+    <app-stat-card label="Closed Trades" [value]="'' + stats.total_closed" icon="check-circle" />
+    <div class="card ie__pnl-card">
+      <span class="text-muted" style="font-size:0.75rem;font-weight:600">Total P&amp;L</span>
+      <app-pnl-display [value]="stats.total_pnl" prefix="₹" />
+    </div>
+    <app-stat-card label="Win Rate"
+      [value]="stats.win_rate !== null ? (stats.win_rate * 100 | number:'1.1-1') + '%' : 'N/A'"
+      icon="graph-up-arrow" />
+    <app-stat-card label="Profit Factor"
+      [value]="stats.profit_factor !== null ? ((stats.profit_factor | number:'1.2-2') ?? '') : 'N/A'"
+      icon="percent" />
+    <app-stat-card label="Wins" [value]="'' + stats.wins" icon="trophy" />
+    <app-stat-card label="Losses" [value]="'' + stats.losses" icon="x-circle" />
+  </div>
+
+  <section class="card ie__actions">
+    <div class="ie__btn-row">
+      <button class="btn btn-danger btn-sm" (click)="forceCloseAll()" [disabled]="closingAll || stats.open_positions === 0">
+        @if (closingAll) { <span class="spinner-border spinner-border-sm"></span> }
+        <i class="bi bi-x-octagon"></i> Force Close All
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" (click)="load()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+    </div>
+  </section>
+
+  @if (positions.length > 0) {
+    <section class="card ie__positions">
+      <h3 class="ie__section-title"><i class="bi bi-list-ul"></i> Open Positions</h3>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Side</th>
+              <th>Qty</th>
+              <th>Entry</th>
+              <th>SL</th>
+              <th>TP</th>
+              <th>Unr. P&amp;L</th>
+              <th>Bars</th>
+              <th>Signal</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (pos of positions; track pos.order_id) {
+              <tr>
+                <td class="fw-semibold">{{ pos.symbol }}</td>
+                <td>
+                  <app-state-badge [label]="pos.side" [variant]="pos.side === 'buy' ? 'success' : 'error'" />
+                </td>
+                <td>{{ pos.quantity }}</td>
+                <td>{{ pos.entry_price | number:'1.2-2' }}</td>
+                <td>{{ pos.stop_loss | number:'1.2-2' }}</td>
+                <td>{{ pos.take_profit | number:'1.2-2' }}</td>
+                <td>
+                  <app-pnl-display [value]="pos.unrealized_pnl" prefix="₹" />
+                </td>
+                <td>{{ pos.bars_held }}</td>
+                <td><span class="badge bg-secondary">{{ pos.signal_type }}</span></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+}
+
+@if (!loading && !stats) {
+  <div class="alert alert-warning d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-triangle"></i> Execution engine not available.
+    <button class="btn btn-sm btn-outline-warning" (click)="load()">Retry</button>
+  </div>
+}

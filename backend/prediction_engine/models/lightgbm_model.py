@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import pickle
 from datetime import datetime, timezone
 from pathlib import Path
@@ -127,6 +128,16 @@ class LightGBMModel(BaseModel):
         return float(np.clip(value, 0.50, 0.70))
 
     @staticmethod
+    def _env_float(name: str, default: float) -> float:
+        raw = os.getenv(name)
+        if raw is None:
+            return default
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
     def _safe_row_value(
         X: pd.DataFrame,
         row_idx: int,
@@ -157,6 +168,13 @@ class LightGBMModel(BaseModel):
 
         base_threshold = self._resolve_base_threshold()
         base_half_band = max(0.02, abs(base_threshold - 0.5))
+        band_scale = float(
+            np.clip(
+                self._env_float("PREDICTION_NO_TRADE_BAND_SCALE", 1.0),
+                0.25,
+                2.5,
+            )
+        )
 
         labels = np.ones(len(proba_up), dtype=int)
         for i, p_up in enumerate(proba_up):
@@ -165,7 +183,7 @@ class LightGBMModel(BaseModel):
             atr_ratio = abs(self._safe_row_value(X, i, "atr_14", default=0.0)) / price
 
             regime_band = float(np.clip(volatility * 0.35 + atr_ratio * 0.75, 0.0, 0.08))
-            half_band = float(np.clip(base_half_band + regime_band, 0.02, 0.20))
+            half_band = float(np.clip((base_half_band + regime_band) * band_scale, 0.01, 0.20))
             buy_threshold = min(0.90, 0.5 + half_band)
             sell_threshold = max(0.10, 0.5 - half_band)
 
@@ -229,6 +247,13 @@ class LightGBMModel(BaseModel):
         results = []
         base_threshold = self._resolve_base_threshold()
         base_half_band = max(0.02, abs(base_threshold - 0.5))
+        band_scale = float(
+            np.clip(
+                self._env_float("PREDICTION_NO_TRADE_BAND_SCALE", 1.0),
+                0.25,
+                2.5,
+            )
+        )
         min_edge_pct = max(0.0, float(min_net_edge_bps)) / 10_000.0
         slippage_pct = max(0.0, float(slippage_bps)) / 10_000.0
 
@@ -259,7 +284,7 @@ class LightGBMModel(BaseModel):
                     0.12,
                 )
             )
-            half_band = float(np.clip(base_half_band + regime_band, 0.02, 0.22))
+            half_band = float(np.clip((base_half_band + regime_band) * band_scale, 0.01, 0.22))
             buy_threshold = min(0.92, 0.5 + half_band)
             sell_threshold = max(0.08, 0.5 - half_band)
 

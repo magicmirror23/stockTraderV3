@@ -81,10 +81,15 @@ class BotConfig:
     """Bot trading configuration."""
 
     def __init__(self, **kwargs):
-        self.watchlist: list[str] = kwargs.get(
+        raw_wl = kwargs.get(
             "watchlist", ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK"]
         )
-        self.min_confidence: float = kwargs.get("min_confidence", 0.7)
+        # Normalize: accept comma-separated string or list
+        if isinstance(raw_wl, str):
+            self.watchlist: list[str] = [s.strip().upper() for s in raw_wl.split(",") if s.strip()]
+        else:
+            self.watchlist = [s.strip().upper() for s in raw_wl if isinstance(s, str) and s.strip()]
+        self.min_confidence: float = float(kwargs.get("min_confidence", 0.7))
         self.max_positions: int = kwargs.get("max_positions", 5)
         self.position_size_pct: float = kwargs.get("position_size_pct", 0.10)
         self.stop_loss_pct: float = kwargs.get("stop_loss_pct", 0.02)
@@ -696,7 +701,14 @@ class BotLifecycleManager:
                         self._log_skip(ticker, action, confidence, "below_breakeven")
                         continue
 
-                    allowed, reason = risk.can_open_position(ticker, price, qty)
+                    sector = str(prediction.get("sector", "UNKNOWN") or "UNKNOWN")
+                    allowed, reason = risk.can_open_position(
+                        ticker,
+                        price,
+                        qty,
+                        sector=sector,
+                        stop_loss_pct=self._config.stop_loss_pct,
+                    )
                     if not allowed:
                         self._log_skip(ticker, action, confidence, f"risk_blocked: {reason}")
                         continue
@@ -713,7 +725,14 @@ class BotLifecycleManager:
                     result = adapter.place_order(intent)
                     filled_price = result.get("filled_price", price)
 
-                    risk.register_entry(ticker, side, filled_price, qty)
+                    risk.register_entry(
+                        ticker,
+                        side,
+                        filled_price,
+                        qty,
+                        sector=sector,
+                        stop_loss_pct=self._config.stop_loss_pct,
+                    )
 
                     self.positions[ticker] = {
                         "side": side,

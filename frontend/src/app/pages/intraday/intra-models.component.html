@@ -1,0 +1,72 @@
+<!-- Intraday > Models -->
+@if (loading) {
+  <app-loading-skeleton shape="card" />
+  <app-loading-skeleton shape="card" />
+}
+
+@if (!loading && model) {
+  <div class="im__grid">
+    <app-stat-card label="Model Version" [value]="model.version || 'N/A'" icon="cpu" />
+    <div class="card im__status-card">
+      <span class="text-muted" style="font-size:0.75rem;font-weight:600">Status</span>
+      <app-state-badge [label]="model.loaded ? 'loaded' : 'not loaded'" [variant]="statusBadge" />
+    </div>
+    <app-stat-card label="Model Name" [value]="model.model_name || 'N/A'" icon="box" />
+    <app-stat-card label="Target Type" [value]="model.target_type || 'N/A'" icon="bullseye" />
+    <app-stat-card label="Horizon (bars)" [value]="'' + model.horizon_bars" icon="clock" />
+    <app-stat-card label="Features" [value]="'' + model.n_features" icon="grid-3x3" />
+  </div>
+
+  @if (metricKeys().length > 0) {
+    <section class="card im__metrics">
+      <h3 class="im__section-title"><i class="bi bi-graph-up"></i> Training Metrics</h3>
+      <div class="im__metric-grid">
+        @for (key of metricKeys(); track key) {
+          <div class="im__metric">
+            <span class="im__metric-label">{{ key }}</span>
+            <span class="im__metric-value">{{ model.metrics[key] | number:'1.4-4' }}</span>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  @if (trainStatus) {
+    <section class="card im__train-status">
+      <h3 class="im__section-title"><i class="bi bi-arrow-repeat"></i> Training Status</h3>
+      <div class="d-flex align-items-center gap-2">
+        <app-state-badge [label]="trainStatus.state" [variant]="trainBadge" />
+        @if (trainStatus.started_at) {
+          <span class="text-muted" style="font-size:0.75rem">Started: {{ trainStatus.started_at }}</span>
+        }
+      </div>
+      @if (trainStatus.error) {
+        <div class="alert alert-danger mt-2" style="font-size:0.8rem">{{ trainStatus.error }}</div>
+      }
+    </section>
+  }
+
+  <section class="card im__actions">
+    <h3 class="im__section-title"><i class="bi bi-lightning-fill"></i> Actions</h3>
+    <div class="im__btn-row">
+      <button class="btn btn-primary btn-sm" (click)="reload()" [disabled]="reloading">
+        @if (reloading) { <span class="spinner-border spinner-border-sm"></span> }
+        Hot Reload Model
+      </button>
+      <button class="btn btn-success btn-sm" (click)="train()" [disabled]="training">
+        @if (training) { <span class="spinner-border spinner-border-sm"></span> }
+        Start Training
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" (click)="load()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+    </div>
+  </section>
+}
+
+@if (!loading && !model) {
+  <div class="alert alert-warning d-flex align-items-center gap-2">
+    <i class="bi bi-exclamation-triangle"></i> Intraday model not loaded. Train one first.
+    <button class="btn btn-sm btn-outline-warning" (click)="load()">Retry</button>
+  </div>
+}

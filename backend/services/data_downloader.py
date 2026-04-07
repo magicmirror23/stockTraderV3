@@ -12,8 +12,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from backend.prediction_engine.data_pipeline.connector_yahoo import YahooConnector
-from backend.prediction_engine.data_pipeline.providers import SymbolMapper, ProviderError
+from backend.market_data_service.local_access import LocalMarketDataAccess
+from backend.market_data_service.orchestrator import MarketDataOrchestrator
+from backend.prediction_engine.data_pipeline.providers import SymbolMapper
 
 logger = logging.getLogger(__name__)
 
@@ -51,55 +52,52 @@ def _is_stale(csv_path: Path, max_age_hours: float = STALE_HOURS) -> bool:
 
 
 def download_symbol(symbol: str, data_dir: Path = STORAGE_DIR, period_years: int = HISTORY_YEARS) -> bool:
-    """Download daily OHLCV data for a single symbol and save as CSV.
+    """Fetch daily OHLCV data through market-data orchestrator and save as CSV.
 
     Returns True if data was saved successfully.
     """
     data_dir.mkdir(parents=True, exist_ok=True)
     csv_path = data_dir / f"{symbol}.csv"
 
-    ticker_str = _yf_ticker(symbol)
     try:
         end = datetime.now()
         start = end - timedelta(days=period_years * 365)
-        connector = YahooConnector(
-            max_retries=int(os.getenv("YF_DOWNLOAD_MAX_RETRIES", "2")),
-            retry_delay_s=float(os.getenv("YF_DOWNLOAD_RETRY_DELAY_S", "1.5")),
+        orchestrator = MarketDataOrchestrator()
+        outcome = orchestrator.fetch_historical(
+            symbol=symbol,
+            start_date=start.strftime("%Y-%m-%d"),
+            end_date=end.strftime("%Y-%m-%d"),
+            interval="1d",
+            min_rows=max(40, int(os.getenv("TRAIN_DOWNLOAD_MIN_RAW_ROWS", "260")) // 4),
+            force=True,
         )
-        df = connector.fetch(
-            symbol,
-            start=start.strftime("%Y-%m-%d"),
-            end=end.strftime("%Y-%m-%d"),
-        )
-
-        if df is None or df.empty:
-            logger.warning("No data returned for %s (%s)", symbol, ticker_str)
+        if outcome.get("status") != "ok":
+            logger.warning("Fetch failed for %s: %s", symbol, outcome)
             return False
 
-        # Strip timezone info for consistency
-        df["Date"] = pd.to_datetime(df["Date"]).dt.tz_localize(None)
-
-        # Keep only the columns we need
-        keep_cols = ["Date", "Open", "High", "Low", "Close", "Volume"]
-        available = [c for c in keep_cols if c in df.columns]
-        df = df[available]
-
-        # Drop rows with NaN prices
-        df = df.dropna(subset=["Close"])
-
-        if df.empty:
-            logger.warning("Empty dataframe after cleanup for %s", symbol)
+        access = LocalMarketDataAccess()
+        export = access.export_symbol_to_csv(
+            symbol=symbol,
+            data_dir=data_dir,
+            start_date=start.strftime("%Y-%m-%d"),
+            end_date=end.strftime("%Y-%m-%d"),
+            interval="1d",
+            min_rows=20,
+        )
+        if export.status != "ok":
+            logger.warning("No local rows after fetch for %s (%s)", symbol, export.reason)
             return False
 
-        df.to_csv(csv_path, index=False)
-        logger.info("Downloaded %d rows for %s -> %s", len(df), symbol, csv_path)
+        # Keep existing path contract (<SYMBOL>.csv in data_dir) even if canonical symbol differs.
+        if export.csv_path and Path(export.csv_path) != csv_path:
+            hydrated = pd.read_csv(export.csv_path)
+            hydrated.to_csv(csv_path, index=False)
+
+        logger.info("Downloaded %d rows for %s -> %s", export.rows, symbol, csv_path)
         return True
 
-    except ProviderError as e:
-        logger.error("Provider error downloading %s (%s): %s | details=%s", symbol, ticker_str, e, e.details)
-        return False
     except Exception as e:
-        logger.error("Failed to download %s (%s): %s", symbol, ticker_str, e)
+        logger.error("Failed to download %s (%s): %s", symbol, _yf_ticker(symbol), e)
         return False
 
 

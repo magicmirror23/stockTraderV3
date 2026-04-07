@@ -235,3 +235,50 @@ class ModelLeaderboard(Base):
     promoted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+
+# ---------------------------------------------------------------------------
+# Market Data Service
+# ---------------------------------------------------------------------------
+
+class MarketBar(Base):
+    """Canonical normalized OHLCV bars shared across all services."""
+
+    __tablename__ = "market_bars"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(24), nullable=False, index=True)
+    timestamp = Column(DateTime, nullable=False, index=True)
+    interval = Column(String(16), nullable=False, default="1d", index=True)
+    open = Column(Float, nullable=False)
+    high = Column(Float, nullable=False)
+    low = Column(Float, nullable=False)
+    close = Column(Float, nullable=False)
+    volume = Column(Float, nullable=False, default=0.0)
+    source = Column(String(40), nullable=False, default="unknown")
+    ingested_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+    __table_args__ = (
+        Index("ux_market_bars_sym_ts_int", "symbol", "timestamp", "interval", unique=True),
+        Index("ix_market_bars_sym_int_ts", "symbol", "interval", "timestamp"),
+    )
+
+
+class MarketDataFailure(Base):
+    """Tracks symbol/provider failures for retry and cooldown jobs."""
+
+    __tablename__ = "market_data_failures"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(24), nullable=False, index=True)
+    interval = Column(String(16), nullable=False, default="1d", index=True)
+    provider = Column(String(40), nullable=False)
+    error_code = Column(String(40), nullable=False, index=True)
+    last_error = Column(Text, nullable=True)
+    attempts = Column(Integer, nullable=False, default=0)
+    last_attempt_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    cooldown_until = Column(DateTime, nullable=True, index=True)
+
+    __table_args__ = (
+        Index("ux_market_data_fail_sym_int", "symbol", "interval", unique=True),
+    )
+

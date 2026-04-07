@@ -126,8 +126,13 @@ export class MarketOverviewComponent implements OnInit, OnDestroy {
     private intelligenceApi: IntelligenceApiService,
   ) {}
 
+  private liveTickCount = 0;
+
   ngOnInit(): void {
     this.loadAll();
+
+    // Auto-start WebSocket stream for real-time price updates
+    this.startLiveStream();
 
     // Poll market status every 30s
     timer(30_000, 30_000).pipe(
@@ -137,8 +142,8 @@ export class MarketOverviewComponent implements OnInit, OnDestroy {
       if (s) { this.marketStatus = s; this.cdr.markForCheck(); }
     });
 
-    // Poll overview data every 60s
-    timer(60_000, 60_000).pipe(
+    // Poll overview data every 15s as backup
+    timer(15_000, 15_000).pipe(
       switchMap(() => this.liveStream.getMarketOverview().pipe(catchError(() => of(null)))),
       takeUntil(this.destroy$),
     ).subscribe(ov => {
@@ -149,18 +154,72 @@ export class MarketOverviewComponent implements OnInit, OnDestroy {
     this.liveStream.connected$.pipe(takeUntil(this.destroy$))
       .subscribe(c => { this.wsConnected = c; this.cdr.markForCheck(); });
 
-    // Live tick updates for watchlist
+    // Live tick updates for watchlist + overview rebuild
     this.liveStream.watchlist$.pipe(takeUntil(this.destroy$))
       .subscribe(map => {
         this.watchlist = Array.from(map.values()).slice(0, 10);
         this.updateTickerTape(map);
+        // Rebuild overview panels from live data every few ticks
+        if (map.size >= 5) {
+          this.rebuildOverviewFromLive(map);
+        }
         this.cdr.markForCheck();
       });
+
+    // Count live ticks for overview rebuild throttling
+    this.liveStream.tick$.pipe(takeUntil(this.destroy$))
+      .subscribe(() => { this.liveTickCount++; });
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  /** Start a multi-symbol WebSocket stream for real-time price updates. */
+  private startLiveStream(): void {
+    this.liveStream.getSymbols().pipe(
+      catchError(() => of({ symbols: [] as string[] })),
+      takeUntil(this.destroy$),
+    ).subscribe(res => {
+      const symbols = res.symbols.length > 0 ? res.symbols : [
+        'RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'SBIN',
+        'AXISBANK', 'KOTAKBANK', 'WIPRO', 'HCLTECH', 'SUNPHARMA',
+        'TATASTEEL', 'LT', 'ITC', 'HINDUNILVR', 'BAJFINANCE',
+        'NIFTY50', 'BANKNIFTY', 'SENSEX',
+      ];
+      this.liveStream.connectMulti(symbols);
+    });
+  }
+
+  /** Rebuild overview panels (gainers, losers, etc.) from live WebSocket data. */
+  private rebuildOverviewFromLive(map: Map<string, WatchlistItem>): void {
+    const items = Array.from(map.values());
+    const indexSymbols = new Set(['NIFTY50', 'BANKNIFTY', 'SENSEX']);
+    const indices = items.filter(i => indexSymbols.has(i.symbol));
+    const stocks = items.filter(i => !indexSymbols.has(i.symbol));
+
+    if (indices.length > 0) {
+      this.indices = indices.map(t => this.toIndexCard(t as any));
+      this.vix = this.indices.find(i => i.displayName === 'INDIA VIX') ?? null;
+    }
+
+    const sorted = [...stocks].sort((a, b) => (b.change_pct ?? 0) - (a.change_pct ?? 0));
+    this.gainers = sorted.filter(s => (s.change_pct ?? 0) > 0).slice(0, 8).map(t => this.toMoverRow(t as any));
+    this.losers = sorted.filter(s => (s.change_pct ?? 0) < 0).reverse().slice(0, 8).map(t => this.toMoverRow(t as any));
+    this.volumeLeaders = [...stocks].sort((a, b) => b.volume - a.volume).slice(0, 6).map(t => this.toMoverRow(t as any));
+    this.totalSymbols = items.length;
+
+    // Breadth
+    const adv = stocks.filter(t => (t.change_pct ?? 0) > 0).length;
+    const dec = stocks.filter(t => (t.change_pct ?? 0) < 0).length;
+    this.breadth = {
+      advances: adv,
+      declines: dec,
+      unchanged: stocks.length - adv - dec,
+      total: stocks.length,
+      advanceRatio: stocks.length > 0 ? adv / stocks.length : 0,
+    };
   }
 
   // ── Public helpers for template ──

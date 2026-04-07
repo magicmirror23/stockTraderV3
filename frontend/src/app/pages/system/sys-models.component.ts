@@ -73,6 +73,7 @@ export class SysModelsComponent implements OnInit, OnDestroy {
               status: status?.status || 'loaded',
               last_trained: active.created_at || null,
               accuracy: active.accuracy ?? null,
+              executed_trade_win_rate: active.executed_trade_win_rate ?? null,
             } as ModelStatus;
           }),
           catchError(() => of(status)),

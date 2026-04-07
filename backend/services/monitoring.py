@@ -62,7 +62,7 @@ if _PROM_AVAILABLE:
     )
     MODEL_ACCURACY_GAUGE = Gauge(
         "stocktrader_model_accuracy",
-        "Current model test accuracy",
+        "Current model classification accuracy on full test set",
     )
     TRADE_EXECUTIONS = Counter(
         "stocktrader_trade_executions_total",
@@ -100,6 +100,65 @@ if _PROM_AVAILABLE:
         "stocktrader_retrain_runs_total",
         "Total retrain runs",
         ["status"],
+    )
+
+    # ── Intraday metrics ───────────────────────────────────────────
+    INTRADAY_PREDICTION_REQUESTS = Counter(
+        "stocktrader_intraday_prediction_requests_total",
+        "Total intraday prediction requests",
+        ["signal_type"],
+    )
+    INTRADAY_PREDICTION_LATENCY = Histogram(
+        "stocktrader_intraday_prediction_latency_seconds",
+        "Intraday prediction endpoint latency",
+    )
+    INTRADAY_TRADES = Counter(
+        "stocktrader_intraday_trades_total",
+        "Total intraday micro-trades",
+        ["side", "outcome"],
+    )
+    INTRADAY_TRADE_LATENCY = Histogram(
+        "stocktrader_intraday_trade_execution_latency_seconds",
+        "Intraday trade execution latency",
+    )
+    INTRADAY_PNL = Gauge(
+        "stocktrader_intraday_daily_pnl",
+        "Intraday daily realised PnL",
+    )
+    INTRADAY_OPEN_POSITIONS = Gauge(
+        "stocktrader_intraday_open_positions",
+        "Number of open intraday positions",
+    )
+    INTRADAY_WIN_RATE = Gauge(
+        "stocktrader_intraday_win_rate",
+        "Intraday rolling win rate",
+    )
+    INTRADAY_PROFIT_FACTOR = Gauge(
+        "stocktrader_intraday_profit_factor",
+        "Intraday rolling profit factor",
+    )
+    INTRADAY_MODEL_VERSION = Gauge(
+        "stocktrader_intraday_model_version_info",
+        "Currently loaded intraday model version (label)",
+        ["version"],
+    )
+    INTRADAY_SUPERVISOR_STATE = Gauge(
+        "stocktrader_intraday_supervisor_state",
+        "Trade supervisor state (1=ACTIVE, 2=PAUSED, 3=HALTED, 4=COOLDOWN)",
+    )
+    INTRADAY_SUPERVISOR_TRIGGERS = Counter(
+        "stocktrader_intraday_supervisor_triggers_total",
+        "Trade supervisor risk trigger activations",
+        ["trigger_type"],
+    )
+    INTRADAY_OPTION_SIGNALS = Counter(
+        "stocktrader_intraday_option_signals_total",
+        "Intraday F&O option signals generated",
+        ["signal_type"],
+    )
+    INTRADAY_DRAWDOWN = Gauge(
+        "stocktrader_intraday_drawdown_pct",
+        "Intraday drawdown percentage",
     )
 
 
@@ -150,6 +209,60 @@ def record_drift(feature: str, test_type: str) -> None:
 def record_retrain(status: str) -> None:
     if _PROM_AVAILABLE:
         RETRAIN_RUNS.labels(status=status).inc()
+
+
+# ── Intraday recording helpers ────────────────────────────────────
+
+
+def record_intraday_prediction(signal_type: str, latency: float) -> None:
+    if _PROM_AVAILABLE:
+        INTRADAY_PREDICTION_REQUESTS.labels(signal_type=signal_type).inc()
+        INTRADAY_PREDICTION_LATENCY.observe(latency)
+
+
+def record_intraday_trade(side: str, outcome: str, latency: float = 0.0) -> None:
+    if _PROM_AVAILABLE:
+        INTRADAY_TRADES.labels(side=side, outcome=outcome).inc()
+        if latency > 0:
+            INTRADAY_TRADE_LATENCY.observe(latency)
+
+
+def set_intraday_stats(
+    pnl: float,
+    open_positions: int,
+    win_rate: float,
+    profit_factor: float,
+    drawdown_pct: float = 0.0,
+) -> None:
+    if _PROM_AVAILABLE:
+        INTRADAY_PNL.set(pnl)
+        INTRADAY_OPEN_POSITIONS.set(open_positions)
+        INTRADAY_WIN_RATE.set(win_rate)
+        INTRADAY_PROFIT_FACTOR.set(profit_factor)
+        INTRADAY_DRAWDOWN.set(drawdown_pct)
+
+
+def set_intraday_model_info(version: str) -> None:
+    if _PROM_AVAILABLE:
+        INTRADAY_MODEL_VERSION.labels(version=version).set(1)
+
+
+_SUPERVISOR_STATE_MAP = {"ACTIVE": 1, "PAUSED": 2, "HALTED": 3, "COOLDOWN": 4}
+
+
+def set_supervisor_state(state: str) -> None:
+    if _PROM_AVAILABLE:
+        INTRADAY_SUPERVISOR_STATE.set(_SUPERVISOR_STATE_MAP.get(state, 0))
+
+
+def record_supervisor_trigger(trigger_type: str) -> None:
+    if _PROM_AVAILABLE:
+        INTRADAY_SUPERVISOR_TRIGGERS.labels(trigger_type=trigger_type).inc()
+
+
+def record_intraday_option_signal(signal_type: str) -> None:
+    if _PROM_AVAILABLE:
+        INTRADAY_OPTION_SIGNALS.labels(signal_type=signal_type).inc()
 
 
 def capture_exception(exc: Exception) -> None:

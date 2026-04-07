@@ -1,1 +1,1 @@
-# Shared strategy, execution, and risk abstractions
+"""Shared strategy, execution, and risk abstractions."""

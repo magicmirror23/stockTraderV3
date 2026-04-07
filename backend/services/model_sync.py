@@ -9,14 +9,21 @@ from __future__ import annotations
 import base64
 import io
 import json
+import os
 import tarfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+MODEL_REGISTRY_DIR = Path(os.getenv("MODEL_REGISTRY_DIR", str(REPO_ROOT / "models")))
+MODEL_INDEX_PATH = MODEL_REGISTRY_DIR / "index.json"
 ARTIFACTS_DIR = REPO_ROOT / "models" / "artifacts"
 REGISTRY_PATH = REPO_ROOT / "models" / "registry.json"
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _read_registry() -> dict[str, Any]:
@@ -43,7 +50,7 @@ def _upsert_registry_entry(version: str, entry: dict[str, Any] | None, set_lates
 
     merged = {
         "version": version,
-        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+        "timestamp": _now_iso(),
         "artifact_path": f"models/artifacts/{version}",
     }
     if isinstance(entry, dict):
@@ -74,9 +81,45 @@ def _safe_extract_tar(tar: tarfile.TarFile, destination: Path) -> None:
     tar.extractall(destination)
 
 
+def _read_index() -> dict[str, Any]:
+    if MODEL_INDEX_PATH.exists():
+        try:
+            data = json.loads(MODEL_INDEX_PATH.read_text())
+            if isinstance(data, dict):
+                data.setdefault("models", [])
+                data.setdefault("active_version", None)
+                return data
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return {"models": [], "active_version": None}
+
+
+def _write_index(index: dict[str, Any]) -> None:
+    MODEL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
+    MODEL_INDEX_PATH.write_text(json.dumps(index, indent=2))
+
+
+def _upsert_index_entry(version: str, artifact_path: Path, set_latest: bool) -> None:
+    index = _read_index()
+    rows = [row for row in index.get("models", []) if row.get("version") != version]
+    rows.append(
+        {
+            "version": version,
+            "path": str(artifact_path),
+            "created_at": _now_iso(),
+        }
+    )
+    index["models"] = rows
+    if set_latest:
+        index["active_version"] = version
+    _write_index(index)
+
+
 def build_model_sync_payload(version: str, registry_entry: dict[str, Any] | None = None) -> dict[str, Any]:
     """Pack model artifact directory into a JSON-safe payload."""
-    artifact_dir = ARTIFACTS_DIR / version
+    artifact_dir = MODEL_REGISTRY_DIR / version
+    if not artifact_dir.exists():
+        artifact_dir = ARTIFACTS_DIR / version
     if not artifact_dir.exists() or not artifact_dir.is_dir():
         raise FileNotFoundError(f"Model artifact path not found: {artifact_dir}")
 
@@ -105,20 +148,22 @@ def apply_model_sync_payload(payload: dict[str, Any], *, set_latest: bool = True
         raise ValueError("Missing artifact_tgz_b64 in sync payload")
 
     raw = base64.b64decode(bundle_b64)
-    ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+    MODEL_REGISTRY_DIR.mkdir(parents=True, exist_ok=True)
     with tarfile.open(fileobj=io.BytesIO(raw), mode="r:gz") as archive:
-        _safe_extract_tar(archive, ARTIFACTS_DIR)
+        _safe_extract_tar(archive, MODEL_REGISTRY_DIR)
 
-    artifact_dir = ARTIFACTS_DIR / version
+    artifact_dir = MODEL_REGISTRY_DIR / version
     if not artifact_dir.exists():
         raise FileNotFoundError(f"Synced artifact directory missing after extraction: {artifact_dir}")
 
     entry = payload.get("registry_entry")
+    _upsert_index_entry(version, artifact_dir, set_latest=set_latest)
     _upsert_registry_entry(version, entry if isinstance(entry, dict) else None, set_latest=set_latest)
 
     return {
         "status": "synced",
         "version": version,
         "artifact_path": str(artifact_dir),
+        "index_path": str(MODEL_INDEX_PATH),
         "registry_path": str(REGISTRY_PATH),
     }

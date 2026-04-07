@@ -8,6 +8,9 @@ import os
 from fastapi import APIRouter, HTTPException
 
 from backend.api.schemas import (
+    ModelActivateRequest,
+    ModelActivateResponse,
+    ModelMetadataResponse,
     ModelReloadRequest,
     ModelReloadResponse,
     ModelStatusResponse,
@@ -27,6 +30,9 @@ async def model_status():
         status=info["status"],
         last_trained=info.get("last_trained"),
         accuracy=info.get("accuracy"),
+        executed_trade_win_rate=info.get("executed_trade_win_rate"),
+        inference_only=bool(info.get("inference_only", False)),
+        feature_count=int(info.get("feature_count", 0) or 0),
     )
 
 
@@ -47,6 +53,42 @@ async def model_reload(req: ModelReloadRequest | None = None):
         message="Model reload initiated.",
         new_version=new_version,
         status=mgr.status,
+    )
+
+
+@router.get("/metadata", response_model=ModelMetadataResponse)
+async def model_metadata():
+    mgr = ModelManager()
+    try:
+        payload = mgr.get_model_metadata()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return ModelMetadataResponse(
+        model_version=payload.get("model_version"),
+        feature_columns=list(payload.get("feature_columns") or []),
+        metadata=dict(payload.get("metadata") or {}),
+        metrics=dict(payload.get("metrics") or {}),
+        active_model_dir=payload.get("active_model_dir"),
+    )
+
+
+@router.post("/activate-version", response_model=ModelActivateResponse)
+async def model_activate_version(req: ModelActivateRequest):
+    mgr = ModelManager()
+    try:
+        active_version = mgr.activate_version(req.version)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return ModelActivateResponse(
+        status="activated",
+        active_version=active_version,
+        model_status=mgr.status,
     )
 
 

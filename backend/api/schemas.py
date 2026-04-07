@@ -132,9 +132,14 @@ class PredictionEntry(BaseModel):
 
 
 class PredictRequest(BaseModel):
-    """Request body for single stock-price prediction."""
+    """Request body for single prediction (ticker lookup or direct features)."""
 
-    ticker: str = Field(..., min_length=1, max_length=10, examples=["AAPL"])
+    ticker: Optional[str] = Field(None, min_length=1, max_length=20, examples=["AAPL"])
+    features: Optional[dict[str, float]] = Field(
+        default=None,
+        description="Explicit feature payload for schema-validated inference.",
+    )
+    quantity: int = Field(default=1, ge=1, le=100000)
     horizon_days: int = Field(
         default=5,
         ge=1,
@@ -205,8 +210,17 @@ class ModelStatusResponse(BaseModel):
     last_trained: Optional[datetime] = None
     accuracy: Optional[float] = Field(
         None, ge=0.0, le=1.0,
-        description="Latest evaluation accuracy.",
+        description="Classification accuracy on full test set.",
     )
+    executed_trade_win_rate: Optional[float] = Field(
+        None, ge=0.0, le=1.0,
+        description="Fraction of executed trades with positive return.",
+    )
+    inference_only: bool = Field(
+        default=False,
+        description="True when production retraining is disabled.",
+    )
+    feature_count: int = Field(default=0, ge=0)
 
 
 # ---------------------------------------------------------------------------
@@ -229,6 +243,30 @@ class ModelReloadResponse(BaseModel):
     message: str = Field(..., examples=["Model reload initiated."])
     new_version: str
     status: str = Field(..., examples=["loading"])
+
+
+class ModelActivateRequest(BaseModel):
+    """Activate a specific model version from registry."""
+
+    version: str = Field(..., min_length=1)
+
+
+class ModelActivateResponse(BaseModel):
+    """Response after model version activation."""
+
+    status: str
+    active_version: str
+    model_status: str
+
+
+class ModelMetadataResponse(BaseModel):
+    """Metadata for currently active model artifact bundle."""
+
+    model_version: Optional[str] = None
+    feature_columns: list[str] = Field(default_factory=list)
+    metadata: dict = Field(default_factory=dict)
+    metrics: dict = Field(default_factory=dict)
+    active_model_dir: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -313,7 +351,21 @@ class ExecuteResponse(BaseModel):
 class BacktestRunRequest(BaseModel):
     """Launch a back-test simulation."""
 
-    tickers: list[str] = Field(..., min_length=1, max_length=50)
+    tickers: Optional[list[str]] = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+        description="Explicit ticker list. If omitted, `universe_version` is used.",
+    )
+    universe_version: Optional[str] = Field(
+        default=None,
+        description="Configured universe snapshot version (e.g. universe_v1..universe_v4).",
+    )
+    universe_as_of_date: Optional[str] = Field(
+        default=None,
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="Point-in-time universe date (ISO YYYY-MM-DD). Defaults to today.",
+    )
     start_date: str = Field(
         ...,
         pattern=r"^\d{4}-\d{2}-\d{2}$",
@@ -329,6 +381,34 @@ class BacktestRunRequest(BaseModel):
     strategy: str = Field(
         default="momentum",
         description="Strategy identifier.",
+    )
+    model_version: Optional[str] = Field(
+        default=None,
+        description="Specific model version for inference; active model when omitted.",
+    )
+    slippage_pct: float = Field(default=0.001, ge=0.0, le=0.1)
+    fill_probability: float = Field(default=0.98, ge=0.0, le=1.0)
+    use_angel_charges: bool = Field(default=True)
+    trade_type: str = Field(default="intraday")
+    commission_per_trade: float = Field(default=20.0, ge=0.0)
+    latency_ms: int = Field(default=50, ge=0, le=60_000)
+    partial_fill_prob: float = Field(default=0.0, ge=0.0, le=1.0)
+    execution_delay_bars: int = Field(
+        default=1,
+        ge=1,
+        le=20,
+        description="Bars to delay execution after decision timestamp.",
+    )
+    walk_forward: bool = Field(
+        default=False,
+        description="Enable rolling walk-forward evaluation in addition to main run.",
+    )
+    wf_train_days: int = Field(default=120, ge=20, le=3000)
+    wf_test_days: int = Field(default=30, ge=5, le=1000)
+    wf_step_days: int = Field(default=30, ge=1, le=1000)
+    model_versions: Optional[list[str]] = Field(
+        default=None,
+        description="Model versions to compare in walk-forward mode.",
     )
 
 
@@ -381,6 +461,16 @@ class BacktestResultsResponse(BaseModel):
     total_trades: int = 0
     no_trade_count: int = 0
     rejection_count: int = 0
+    turnover: float = 0.0
+    avg_holding_bars: Optional[float] = None
+    median_holding_bars: Optional[float] = None
+    win_loss_distribution: dict = Field(default_factory=dict)
+    metrics_by_symbol: dict = Field(default_factory=dict)
+    metrics_by_sector: dict = Field(default_factory=dict)
+    metrics_by_regime: dict = Field(default_factory=dict)
+    equity_curve: list[dict] = Field(default_factory=list)
+    drawdown_curve: list[dict] = Field(default_factory=list)
+    walk_forward: dict = Field(default_factory=dict)
     trades: list[BacktestTrade]
     completed_at: Optional[datetime] = None
 

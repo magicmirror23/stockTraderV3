@@ -1,0 +1,1266 @@
+{
+  "architecture": "regime_aware_ranking_engine",
+  "target_mode": "classification",
+  "horizon_bars": 3,
+  "threshold_source": "validation_only",
+  "selected_model": "lightgbm_classifier",
+  "selected_threshold": 0.55,
+  "default_feature_values": {
+    "rsi_14": 52.84154151813922,
+    "macd": 3.6609700919157433,
+    "macd_signal": 3.039740710042214,
+    "macd_hist": 0.39054664710525966,
+    "volatility_20": 0.24239535969374013,
+    "return_1d": 0.0004030081106363159,
+    "return_5d": 0.0026022591713477095,
+    "log_return_1d": 0.0004029269112301024,
+    "volume_spike": 0.0,
+    "volume_ratio": 0.8714899821248314,
+    "adx_14": 20.67350773887341,
+    "bb_width": 0.09849418882994604,
+    "bb_pct_b": 0.5910132160871624,
+    "stoch_k": 59.626483110806085,
+    "distance_sma50": 0.0157810391768114,
+    "momentum_10": 0.009089775094752062,
+    "gap_pct": 0.00020807110903166954,
+    "vwap_dist": 0.007372339196018415,
+    "obv_slope": 0.012004588635083425,
+    "williams_r": -40.373516889193915,
+    "cci_20": 30.12076781137491,
+    "roc_10": 0.8248220804833122,
+    "ema_crossover": 0.0031492976615048337,
+    "return_2d": 0.001358946543043582,
+    "return_3d": 0.001760394132729548,
+    "return_10d": 0.008248220804833117,
+    "distance_sma200": -0.01747748487568676,
+    "price_pos_52w": 0.49030342082602285,
+    "stoch_d": 59.02686102557942,
+    "rsi_divergence": 0.0,
+    "force_index": 3004680.7716984088,
+    "high_low_ratio": 1.0204734442992796,
+    "return_mean_5": 0.0005734863746173935,
+    "return_mean_10": 0.0009089775094752062,
+    "return_skew_10": 0.11520488993854877,
+    "volume_change": -0.012484695946713364,
+    "close_to_ma20": 1.0066943035276614,
+    "close_to_ma50": 1.0157810391768114,
+    "return_lag_1": 0.0003677439674990568,
+    "return_lag_5": 0.0003858840333114122,
+    "ret_1": 0.0003739458936868889,
+    "ret_3": 0.0012285611588754852,
+    "ret_5": 0.0011438603162607919,
+    "ret_10": 0.002779434096344291,
+    "realized_vol_5": 0.012674129562073436,
+    "realized_vol_20": 0.014544152539133626,
+    "atr_pct": 0.02357162481021539,
+    "z_ret_20": 0.0,
+    "z_volume_20": -0.13223716675942815,
+    "gap_z_20": 0.0,
+    "trend_persistence_10": 0.0,
+    "mean_reversion_score": -0.03946808734861655,
+    "stock_return_1d_minus_nifty_return_1d": -0.00021231007431374245,
+    "stock_return_5d_minus_nifty_return_5d": -0.00033722048953452907,
+    "sector_relative_strength_5d": -0.0004986246600466159,
+    "sector_relative_strength_20d": 0.0,
+    "benchmark_relative_momentum": 0.00016616604484362245,
+    "market_breadth_feature": 0.49019607843137253,
+    "sector_breadth_feature": 0.5,
+    "beta_to_benchmark_63d": 0.0,
+    "rolling_corr_to_benchmark_20d": 0.5906229759638394,
+    "benchmark_rel_strength": -0.00033722048953452907,
+    "sector_rel_strength": -0.0004986246600466159,
+    "breadth_advancers": 0.49019607843137253,
+    "breadth_decliners": 0.5098039215686274,
+    "breadth_momentum_5": 0.4980392156862745,
+    "drawdown_63": -0.028202497489508593,
+    "recovery_20": 0.039294140475469086,
+    "regime_trending_up": 0.0,
+    "regime_trending_down": 0.0,
+    "regime_sideways": 0.0,
+    "regime_high_vol": 0.0,
+    "regime_low_vol": 1.0,
+    "regime_risk_on": 0.5,
+    "regime_risk_off": 0.5
+  },
+  "target_definitions": {
+    "target_next_day_return": "close[t+1]/close[t]-1",
+    "target_next_3d_return": "close[t+3]/close[t]-1",
+    "target_excess_return": "target_next_day_return - cross_sectional_benchmark_next_day_return",
+    "target_top_decile": "1 when target_horizon_return is in top 10% of symbols for same date",
+    "target_downside_aware": "target_horizon_return - downside_penalty * downside_vol_20",
+    "target_opportunity_score": "0.45*excess + 0.35*next_3d + 0.20*downside_aware"
+  },
+  "feature_groups": {
+    "base_numeric": [
+      "rsi_14",
+      "macd",
+      "macd_signal",
+      "macd_hist",
+      "volatility_20",
+      "return_1d",
+      "return_5d",
+      "log_return_1d",
+      "volume_spike",
+      "volume_ratio",
+      "adx_14",
+      "bb_width",
+      "bb_pct_b",
+      "stoch_k",
+      "distance_sma50",
+      "momentum_10",
+      "gap_pct",
+      "vwap_dist",
+      "obv_slope",
+      "williams_r",
+      "cci_20",
+      "roc_10",
+      "ema_crossover",
+      "return_2d",
+      "return_3d",
+      "return_10d",
+      "distance_sma200",
+      "price_pos_52w",
+      "stoch_d",
+      "rsi_divergence",
+      "force_index",
+      "high_low_ratio",
+      "return_mean_5",
+      "return_mean_10",
+      "return_skew_10",
+      "volume_change",
+      "close_to_ma20",
+      "close_to_ma50",
+      "return_lag_1",
+      "return_lag_5"
+    ],
+    "engineered": [
+      "ret_1",
+      "ret_3",
+      "ret_5",
+      "ret_10",
+      "realized_vol_5",
+      "realized_vol_20",
+      "atr_pct",
+      "z_ret_20",
+      "z_volume_20",
+      "gap_z_20",
+      "trend_persistence_10",
+      "mean_reversion_score",
+      "stock_return_1d_minus_nifty_return_1d",
+      "stock_return_5d_minus_nifty_return_5d",
+      "sector_relative_strength_5d",
+      "sector_relative_strength_20d",
+      "benchmark_relative_momentum",
+      "market_breadth_feature",
+      "sector_breadth_feature",
+      "beta_to_benchmark_63d",
+      "rolling_corr_to_benchmark_20d",
+      "benchmark_rel_strength",
+      "sector_rel_strength",
+      "breadth_advancers",
+      "breadth_decliners",
+      "breadth_momentum_5",
+      "drawdown_63",
+      "recovery_20"
+    ],
+    "regime": [
+      "regime_trending_up",
+      "regime_trending_down",
+      "regime_sideways",
+      "regime_high_vol",
+      "regime_low_vol",
+      "regime_risk_on",
+      "regime_risk_off"
+    ]
+  },
+  "model_comparison": {
+    "selection_rule": "max_validation_risk_objective",
+    "risk_objective_formula": "sharpe + 0.35*sortino + 0.20*profit_factor + 0.25*precision_executed - 1.8*max_drawdown",
+    "candidates": [
+      {
+        "model_name": "lightgbm_classifier",
+        "mode": "classification",
+        "validation": {
+          "sharpe": 5.14484090246346,
+          "sortino": 7.005120681832292,
+          "profit_factor": 1.1672556183196723,
+          "max_drawdown": 0.031960320680986753,
+          "precision_executed": 0.5333333333333333,
+          "trade_count": 30.0,
+          "avg_trade_return": 0.0017159637976825219,
+          "risk_objective": 7.905889020876255
+        },
+        "test": {
+          "sharpe": 0.43801812782411065,
+          "sortino": 0.4567666595777163,
+          "profit_factor": 0.9825966700978939,
+          "max_drawdown": 0.05414888324322431,
+          "precision_executed": 0.46551724137931033,
+          "trade_count": 58.0,
+          "avg_trade_return": -0.00011176209606282429,
+          "risk_objective": 0.8133171132029139
+        },
+        "threshold": 0.55,
+        "threshold_source": "validation_only",
+        "threshold_grid": [
+          {
+            "threshold": 0.5,
+            "objective": -2.711394530749458,
+            "sharpe": -2.1624830991683854,
+            "sortino": -2.314422560997178,
+            "profit_factor": 0.8896416911185177,
+            "max_drawdown": 0.02024151699923371,
+            "precision_executed": 0.4785714285714286,
+            "trade_count": 140.0,
+            "avg_trade_return": -0.0010417926674321867
+          },
+          {
+            "threshold": 0.525,
+            "objective": -2.711394530749458,
+            "sharpe": -2.1624830991683854,
+            "sortino": -2.314422560997178,
+            "profit_factor": 0.8896416911185177,
+            "max_drawdown": 0.02024151699923371,
+            "precision_executed": 0.4785714285714286,
+            "trade_count": 140.0,
+            "avg_trade_return": -0.0010417926674321867
+          },
+          {
+            "threshold": 0.55,
+            "objective": 7.905889020876255,
+            "sharpe": 5.14484090246346,
+            "sortino": 7.005120681832292,
+            "profit_factor": 1.1672556183196723,
+            "max_drawdown": 0.031960320680986753,
+            "precision_executed": 0.5333333333333333,
+            "trade_count": 30.0,
+            "avg_trade_return": 0.0017159637976825219
+          },
+          {
+            "threshold": 0.575,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.6,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.625,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.65,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.675,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.7,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.725,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.75,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.775,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.8,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.825,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.85,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          }
+        ]
+      },
+      {
+        "model_name": "tree_boosting",
+        "mode": "classification",
+        "validation": {
+          "sharpe": 2.1537898908554403,
+          "sortino": 1.8067232696449238,
+          "profit_factor": 1.0153668418509831,
+          "max_drawdown": 0.017710765365073433,
+          "precision_executed": 0.5353535353535354,
+          "trade_count": 99.0,
+          "avg_trade_return": 0.000141437600599148,
+          "risk_objective": 3.0911754097826116
+        },
+        "test": {
+          "sharpe": 3.9691587607111374,
+          "sortino": 9.473280490491023,
+          "profit_factor": 1.4568582264015995,
+          "max_drawdown": 0.03267254740477654,
+          "precision_executed": 0.4806201550387597,
+          "trade_count": 129.0,
+          "avg_trade_return": 0.002585536196691826,
+          "risk_objective": 7.637523031094408
+        },
+        "threshold": 0.55,
+        "threshold_source": "validation_only",
+        "threshold_grid": [
+          {
+            "threshold": 0.5,
+            "objective": -1.002993381766982,
+            "sharpe": -0.9803309029688957,
+            "sortino": -0.8561142108470469,
+            "profit_factor": 0.9221511181028201,
+            "max_drawdown": 0.019021357171054576,
+            "precision_executed": 0.5071428571428571,
+            "trade_count": 140.0,
+            "avg_trade_return": -0.0007155533260817859
+          },
+          {
+            "threshold": 0.525,
+            "objective": -1.002993381766982,
+            "sharpe": -0.9803309029688957,
+            "sortino": -0.8561142108470469,
+            "profit_factor": 0.9221511181028201,
+            "max_drawdown": 0.019021357171054576,
+            "precision_executed": 0.5071428571428571,
+            "trade_count": 140.0,
+            "avg_trade_return": -0.0007155533260817859
+          },
+          {
+            "threshold": 0.55,
+            "objective": 3.0911754097826116,
+            "sharpe": 2.1537898908554403,
+            "sortino": 1.8067232696449238,
+            "profit_factor": 1.0153668418509831,
+            "max_drawdown": 0.017710765365073433,
+            "precision_executed": 0.5353535353535354,
+            "trade_count": 99.0,
+            "avg_trade_return": 0.000141437600599148
+          },
+          {
+            "threshold": 0.575,
+            "objective": 2.3652399292263944,
+            "sharpe": 1.4418595903183642,
+            "sortino": 1.843161528004499,
+            "profit_factor": 1.014246372855783,
+            "max_drawdown": 0.0443043801432248,
+            "precision_executed": 0.6206896551724138,
+            "trade_count": 29.0,
+            "avg_trade_return": 0.00016373127218854402
+          },
+          {
+            "threshold": 0.6,
+            "objective": -Infinity,
+            "sharpe": 9.728744384617466,
+            "sortino": NaN,
+            "profit_factor": 8.364440693142807,
+            "max_drawdown": 0.014057670426888658,
+            "precision_executed": 0.8,
+            "trade_count": 5.0,
+            "avg_trade_return": 0.02070537602851381
+          },
+          {
+            "threshold": 0.625,
+            "objective": -Infinity,
+            "sharpe": NaN,
+            "sortino": 0.0,
+            "profit_factor": 10.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 1.0,
+            "trade_count": 1.0,
+            "avg_trade_return": 0.06960684297261244
+          },
+          {
+            "threshold": 0.65,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.675,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.7,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.725,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.75,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.775,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.8,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.825,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.85,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          }
+        ]
+      },
+      {
+        "model_name": "baseline_logistic",
+        "mode": "classification",
+        "validation": {
+          "sharpe": 1.5744353129023807,
+          "sortino": 3.3461050767567038,
+          "profit_factor": 0.9844682704719716,
+          "max_drawdown": 0.06998859760225762,
+          "precision_executed": 0.53125,
+          "trade_count": 32.0,
+          "avg_trade_return": -0.00015189986325107874,
+          "risk_objective": 2.9492987681775573
+        },
+        "test": {
+          "sharpe": 4.361084037883779,
+          "sortino": 7.730854784602887,
+          "profit_factor": 1.4355186006542198,
+          "max_drawdown": 0.019767528739070395,
+          "precision_executed": 0.4854368932038835,
+          "trade_count": 103.0,
+          "avg_trade_return": 0.002385626710544239,
+          "risk_objective": 7.439764604196276
+        },
+        "threshold": 0.55,
+        "threshold_source": "validation_only",
+        "threshold_grid": [
+          {
+            "threshold": 0.5,
+            "objective": -3.641239715417308,
+            "sharpe": -2.277764772611219,
+            "sortino": -4.49627628829973,
+            "profit_factor": 0.8291651386494561,
+            "max_drawdown": 0.034863403763295664,
+            "precision_executed": 0.42857142857142855,
+            "trade_count": 140.0,
+            "avg_trade_return": -0.0016813371491559267
+          },
+          {
+            "threshold": 0.525,
+            "objective": -3.641239715417308,
+            "sharpe": -2.277764772611219,
+            "sortino": -4.49627628829973,
+            "profit_factor": 0.8291651386494561,
+            "max_drawdown": 0.034863403763295664,
+            "precision_executed": 0.42857142857142855,
+            "trade_count": 140.0,
+            "avg_trade_return": -0.0016813371491559267
+          },
+          {
+            "threshold": 0.55,
+            "objective": 2.9492987681775573,
+            "sharpe": 1.5744353129023807,
+            "sortino": 3.3461050767567038,
+            "profit_factor": 0.9844682704719716,
+            "max_drawdown": 0.06998859760225762,
+            "precision_executed": 0.53125,
+            "trade_count": 32.0,
+            "avg_trade_return": -0.00015189986325107874
+          },
+          {
+            "threshold": 0.575,
+            "objective": -Infinity,
+            "sharpe": 28.5375608578013,
+            "sortino": 0.0,
+            "profit_factor": 10.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 1.0,
+            "trade_count": 3.0,
+            "avg_trade_return": 0.043052816658757743
+          },
+          {
+            "threshold": 0.6,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.625,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.65,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.675,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.7,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.725,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.75,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.775,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.8,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.825,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          },
+          {
+            "threshold": 0.85,
+            "objective": -Infinity,
+            "sharpe": 0.0,
+            "sortino": 0.0,
+            "profit_factor": 0.0,
+            "max_drawdown": 0.0,
+            "precision_executed": 0.0,
+            "trade_count": 0.0,
+            "avg_trade_return": 0.0
+          }
+        ]
+      }
+    ],
+    "sequence_model": {
+      "enabled": false,
+      "status": "not_enabled",
+      "message": "Sequence model scaffold is config-gated; baseline and tree models are primary for robust production deployment."
+    }
+  },
+  "explainability": {
+    "feature_importance": [
+      {
+        "feature": "drawdown_63",
+        "importance": 299.0,
+        "importance_pct": 0.04017737167428111
+      },
+      {
+        "feature": "atr_pct",
+        "importance": 280.0,
+        "importance_pct": 0.03762429454447729
+      },
+      {
+        "feature": "realized_vol_5",
+        "importance": 266.0,
+        "importance_pct": 0.03574307981725343
+      },
+      {
+        "feature": "price_pos_52w",
+        "importance": 248.0,
+        "importance_pct": 0.0333243751679656
+      },
+      {
+        "feature": "adx_14",
+        "importance": 239.0,
+        "importance_pct": 0.03211502284332169
+      },
+      {
+        "feature": "macd_hist",
+        "importance": 234.0,
+        "importance_pct": 0.03144316044074174
+      },
+      {
+        "feature": "rolling_corr_to_benchmark_20d",
+        "importance": 231.0,
+        "importance_pct": 0.031040042999193766
+      },
+      {
+        "feature": "volatility_20",
+        "importance": 225.0,
+        "importance_pct": 0.030233808116097823
+      },
+      {
+        "feature": "distance_sma200",
+        "importance": 193.0,
+        "importance_pct": 0.025933888739586134
+      },
+      {
+        "feature": "sector_relative_strength_5d",
+        "importance": 192.0,
+        "importance_pct": 0.025799516259070142
+      },
+      {
+        "feature": "return_skew_10",
+        "importance": 175.0,
+        "importance_pct": 0.02351518409029831
+      },
+      {
+        "feature": "stock_return_1d_minus_nifty_return_1d",
+        "importance": 171.0,
+        "importance_pct": 0.022977694168234346
+      },
+      {
+        "feature": "sector_relative_strength_20d",
+        "importance": 170.0,
+        "importance_pct": 0.022843321687718354
+      },
+      {
+        "feature": "volume_ratio",
+        "importance": 165.0,
+        "importance_pct": 0.022171459285138403
+      },
+      {
+        "feature": "realized_vol_20",
+        "importance": 163.0,
+        "importance_pct": 0.021902714324106422
+      },
+      {
+        "feature": "force_index",
+        "importance": 162.0,
+        "importance_pct": 0.021768341843590434
+      },
+      {
+        "feature": "return_lag_1",
+        "importance": 157.0,
+        "importance_pct": 0.02109647944101048
+      },
+      {
+        "feature": "recovery_20",
+        "importance": 155.0,
+        "importance_pct": 0.020827734479978502
+      },
+      {
+        "feature": "bb_width",
+        "importance": 151.0,
+        "importance_pct": 0.02029024455791454
+      },
+      {
+        "feature": "obv_slope",
+        "importance": 144.0,
+        "importance_pct": 0.019349637194302608
+      },
+      {
+        "feature": "z_volume_20",
+        "importance": 144.0,
+        "importance_pct": 0.019349637194302608
+      },
+      {
+        "feature": "ema_crossover",
+        "importance": 140.0,
+        "importance_pct": 0.018812147272238646
+      },
+      {
+        "feature": "high_low_ratio",
+        "importance": 139.0,
+        "importance_pct": 0.018677774791722654
+      },
+      {
+        "feature": "benchmark_relative_momentum",
+        "importance": 133.0,
+        "importance_pct": 0.017871539908626714
+      },
+      {
+        "feature": "macd_signal",
+        "importance": 131.0,
+        "importance_pct": 0.017602794947594733
+      }
+    ],
+    "metrics_by_symbol": [
+      {
+        "ticker": "MARUTI",
+        "trade_count": 9,
+        "avg_return": 0.005507136102900804,
+        "win_rate": 0.5555555555555556,
+        "profit_factor": 3.8915153521206394
+      },
+      {
+        "ticker": "BAJFINANCE",
+        "trade_count": 7,
+        "avg_return": -0.002654721558514777,
+        "win_rate": 0.42857142857142855,
+        "profit_factor": 0.7599270402168584
+      },
+      {
+        "ticker": "BANKBARODA",
+        "trade_count": 7,
+        "avg_return": 0.009985331815432708,
+        "win_rate": 0.7142857142857143,
+        "profit_factor": 5.122146697276019
+      },
+      {
+        "ticker": "EICHERMOT",
+        "trade_count": 7,
+        "avg_return": -0.003818737133330078,
+        "win_rate": 0.42857142857142855,
+        "profit_factor": 0.32854351508912505
+      },
+      {
+        "ticker": "AXISBANK",
+        "trade_count": 4,
+        "avg_return": -0.012917876560921887,
+        "win_rate": 0.25,
+        "profit_factor": 0.1348227692658646
+      },
+      {
+        "ticker": "HINDALCO",
+        "trade_count": 4,
+        "avg_return": -4.530708648253778e-06,
+        "win_rate": 0.25,
+        "profit_factor": 0.9992572065412777
+      },
+      {
+        "ticker": "VEDL",
+        "trade_count": 3,
+        "avg_return": 0.005524261923604852,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 3.6733873697111945
+      },
+      {
+        "ticker": "BHARTIARTL",
+        "trade_count": 2,
+        "avg_return": -0.011857000960183328,
+        "win_rate": 0.0,
+        "profit_factor": 0.0
+      },
+      {
+        "ticker": "HEROMOTOCO",
+        "trade_count": 2,
+        "avg_return": 0.00880640585829262,
+        "win_rate": 1.0,
+        "profit_factor": 10.0
+      },
+      {
+        "ticker": "KOTAKBANK",
+        "trade_count": 2,
+        "avg_return": -0.01621268279303989,
+        "win_rate": 0.0,
+        "profit_factor": 0.0
+      },
+      {
+        "ticker": "TATASTEEL",
+        "trade_count": 2,
+        "avg_return": -0.005506212947650191,
+        "win_rate": 0.0,
+        "profit_factor": 0.0
+      },
+      {
+        "ticker": "BPCL",
+        "trade_count": 1,
+        "avg_return": -0.002362026222951119,
+        "win_rate": 0.0,
+        "profit_factor": 0.0
+      },
+      {
+        "ticker": "CIPLA",
+        "trade_count": 1,
+        "avg_return": -0.047848026421076106,
+        "win_rate": 0.0,
+        "profit_factor": 0.0
+      },
+      {
+        "ticker": "DIVISLAB",
+        "trade_count": 1,
+        "avg_return": 0.025423728813559254,
+        "win_rate": 1.0,
+        "profit_factor": 10.0
+      },
+      {
+        "ticker": "INDUSINDBK",
+        "trade_count": 1,
+        "avg_return": -0.013065809193725908,
+        "win_rate": 0.0,
+        "profit_factor": 0.0
+      },
+      {
+        "ticker": "JSWSTEEL",
+        "trade_count": 1,
+        "avg_return": 0.015052134398490402,
+        "win_rate": 1.0,
+        "profit_factor": 10.0
+      },
+      {
+        "ticker": "NESTLEIND",
+        "trade_count": 1,
+        "avg_return": 0.00047205002827488407,
+        "win_rate": 1.0,
+        "profit_factor": 10.0
+      },
+      {
+        "ticker": "SBILIFE",
+        "trade_count": 1,
+        "avg_return": -0.00040603370798431015,
+        "win_rate": 0.0,
+        "profit_factor": 0.0
+      },
+      {
+        "ticker": "SBIN",
+        "trade_count": 1,
+        "avg_return": 0.010587935309424035,
+        "win_rate": 1.0,
+        "profit_factor": 10.0
+      },
+      {
+        "ticker": "TECHM",
+        "trade_count": 1,
+        "avg_return": 0.016172333625750435,
+        "win_rate": 1.0,
+        "profit_factor": 10.0
+      }
+    ],
+    "metrics_by_sector": [
+      {
+        "sector": "Banking",
+        "trade_count": 15,
+        "avg_return": -0.0011118282004026832,
+        "win_rate": 0.4666666666666667,
+        "profit_factor": 0.863491502724876
+      },
+      {
+        "sector": "Unknown",
+        "trade_count": 12,
+        "avg_return": -0.00282269800690522,
+        "win_rate": 0.4166666666666667,
+        "profit_factor": 0.5141926378801647
+      },
+      {
+        "sector": "Auto",
+        "trade_count": 11,
+        "avg_return": 0.006107003331153862,
+        "win_rate": 0.6363636363636364,
+        "profit_factor": 4.91902492275232
+      },
+      {
+        "sector": "Finance",
+        "trade_count": 8,
+        "avg_return": -0.0023736355771984685,
+        "win_rate": 0.375,
+        "profit_factor": 0.75596163044631
+      },
+      {
+        "sector": "Metals",
+        "trade_count": 7,
+        "avg_return": 0.0005745122383710008,
+        "win_rate": 0.2857142857142857,
+        "profit_factor": 1.1135699765293752
+      },
+      {
+        "sector": "Pharma",
+        "trade_count": 2,
+        "avg_return": -0.011212148803758426,
+        "win_rate": 0.5,
+        "profit_factor": 0.5313433116305212
+      },
+      {
+        "sector": "FMCG",
+        "trade_count": 1,
+        "avg_return": 0.00047205002827488407,
+        "win_rate": 1.0,
+        "profit_factor": 10.0
+      },
+      {
+        "sector": "IT",
+        "trade_count": 1,
+        "avg_return": 0.016172333625750435,
+        "win_rate": 1.0,
+        "profit_factor": 10.0
+      },
+      {
+        "sector": "Oil & Gas",
+        "trade_count": 1,
+        "avg_return": -0.002362026222951119,
+        "win_rate": 0.0,
+        "profit_factor": 0.0
+      }
+    ],
+    "metrics_by_regime": [
+      {
+        "regime_label": "trending_up|low_volatility|risk_on",
+        "trade_count": 33,
+        "avg_return": 3.497466990295372e-05,
+        "win_rate": 0.48484848484848486,
+        "profit_factor": 1.0055443328547826
+      },
+      {
+        "regime_label": "trending_up|high_volatility|risk_on",
+        "trade_count": 24,
+        "avg_return": -0.0009920291376746548,
+        "win_rate": 0.4166666666666667,
+        "profit_factor": 0.8550891826353747
+      },
+      {
+        "regime_label": "trending_down|high_volatility|risk_on",
+        "trade_count": 1,
+        "avg_return": 0.016172333625750435,
+        "win_rate": 1.0,
+        "profit_factor": 10.0
+      }
+    ]
+  },
+  "train_split": {
+    "train_start": "2025-01-13",
+    "train_end": "2025-07-07",
+    "val_start": "2025-07-22",
+    "val_end": "2025-09-03",
+    "test_start": "2025-09-18",
+    "test_end": "2025-10-31"
+  },
+  "model_version": "model_v007",
+  "artifact_format": "bundle_v1",
+  "created_at": "2026-04-06T22:13:36Z",
+  "seed": 42,
+  "train_data_source_mode": "local_store_only",
+  "download_report": {
+    "requested": 51,
+    "missing": [],
+    "undersized": [],
+    "downloaded": [],
+    "hydrated": [],
+    "skipped": {},
+    "raw_row_threshold": 460,
+    "lookback_days": 1095,
+    "data_source_mode": "local_store_only",
+    "available": [
+      "HDFCBANK",
+      "RELIANCE",
+      "ICICIBANK",
+      "INFY",
+      "BHARTIARTL",
+      "SBIN",
+      "TCS",
+      "M_M",
+      "AXISBANK",
+      "BAJFINANCE",
+      "LT",
+      "KOTAKBANK",
+      "ITC",
+      "MARUTI",
+      "VEDL",
+      "TATASTEEL",
+      "HCLTECH",
+      "HINDALCO",
+      "SUNPHARMA",
+      "HINDUNILVR",
+      "POWERGRID",
+      "INDUSINDBK",
+      "NTPC",
+      "BAJAJ_AUTO",
+      "EICHERMOT",
+      "HEROMOTOCO",
+      "ADANIPORTS",
+      "ULTRACEMCO",
+      "APOLLOHOSP",
+      "TITAN",
+      "TECHM",
+      "ASIANPAINT",
+      "ONGC",
+      "BPCL",
+      "WIPRO",
+      "BANKBARODA",
+      "BAJAJFINSV",
+      "COALINDIA",
+      "DIVISLAB",
+      "ADANIENT",
+      "CIPLA",
+      "DRREDDY",
+      "HDFCLIFE",
+      "SBILIFE",
+      "JSWSTEEL",
+      "GRASIM",
+      "BRITANNIA",
+      "UPL",
+      "NESTLEIND",
+      "TATACONSUM",
+      "SHREECEM"
+    ],
+    "raw_rows_available": {
+      "HDFCBANK": 492,
+      "RELIANCE": 503,
+      "ICICIBANK": 492,
+      "INFY": 492,
+      "BHARTIARTL": 492,
+      "SBIN": 492,
+      "TCS": 492,
+      "M_M": 492,
+      "AXISBANK": 492,
+      "BAJFINANCE": 492,
+      "LT": 492,
+      "KOTAKBANK": 492,
+      "ITC": 492,
+      "MARUTI": 492,
+      "VEDL": 492,
+      "TATASTEEL": 492,
+      "HCLTECH": 492,
+      "HINDALCO": 492,
+      "SUNPHARMA": 492,
+      "HINDUNILVR": 492,
+      "POWERGRID": 492,
+      "INDUSINDBK": 492,
+      "NTPC": 492,
+      "BAJAJ_AUTO": 492,
+      "EICHERMOT": 492,
+      "HEROMOTOCO": 492,
+      "ADANIPORTS": 492,
+      "ULTRACEMCO": 492,
+      "APOLLOHOSP": 492,
+      "TITAN": 492,
+      "TECHM": 492,
+      "ASIANPAINT": 492,
+      "ONGC": 492,
+      "BPCL": 492,
+      "WIPRO": 492,
+      "BANKBARODA": 492,
+      "BAJAJFINSV": 492,
+      "COALINDIA": 492,
+      "DIVISLAB": 492,
+      "ADANIENT": 492,
+      "CIPLA": 492,
+      "DRREDDY": 492,
+      "HDFCLIFE": 492,
+      "SBILIFE": 492,
+      "JSWSTEEL": 492,
+      "GRASIM": 492,
+      "BRITANNIA": 492,
+      "UPL": 492,
+      "NESTLEIND": 492,
+      "TATACONSUM": 492,
+      "SHREECEM": 492
+    }
+  },
+  "universe": {
+    "version": "universe_v1",
+    "label": "Current 52",
+    "as_of_date": "2026-04-06",
+    "snapshot_path": "C:\\Users\\merkr\\OneDrive\\Desktop\\project\\storage\\universes\\universe_v1\\2026-04-06.json",
+    "candidate_count": 52,
+    "selected_count": 51
+  },
+  "feature_schema_hash": "84f8f98cf0838e37cff214a332a9e7c38cd2dfca6ff3afb380e5d279663a107a",
+  "feature_columns_count": 75,
+  "feature_columns_path": "feature_columns.json"
+}

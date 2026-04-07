@@ -1,0 +1,63 @@
+{
+  "active_version": "model_v007",
+  "models": [
+    {
+      "version": "model_v001",
+      "path": "C:\\Users\\merkr\\OneDrive\\Desktop\\project\\models\\model_v001",
+      "created_at": "2026-04-06T19:37:27Z"
+    },
+    {
+      "version": "model_v002",
+      "path": "C:\\Users\\merkr\\OneDrive\\Desktop\\project\\models\\model_v002",
+      "created_at": "2026-04-06T19:42:27Z"
+    },
+    {
+      "version": "model_v003",
+      "path": "C:\\Users\\merkr\\OneDrive\\Desktop\\project\\models\\model_v003",
+      "created_at": "2026-04-06T20:02:47Z"
+    },
+    {
+      "version": "model_v004",
+      "path": "C:\\Users\\merkr\\OneDrive\\Desktop\\project\\models\\model_v004",
+      "created_at": "2026-04-06T20:08:42Z"
+    },
+    {
+      "version": "model_v005",
+      "path": "C:\\Users\\merkr\\OneDrive\\Desktop\\project\\models\\model_v005",
+      "created_at": "2026-04-06T21:32:03Z",
+      "metrics": {
+        "test_accuracy": 0.3793103448275862,
+        "test_f1": null,
+        "test_sharpe": -2.139111248053891,
+        "test_sortino": -2.6466120212032678,
+        "test_profit_factor": 0.8505792845127281
+      }
+    },
+    {
+      "version": "model_v006",
+      "path": "C:\\Users\\merkr\\OneDrive\\Desktop\\project\\models\\model_v006",
+      "created_at": "2026-04-06T21:40:01Z",
+      "metrics": {
+        "test_accuracy": 0.3793103448275862,
+        "test_f1": null,
+        "test_sharpe": -2.139111248053891,
+        "test_sortino": -2.6466120212032678,
+        "test_profit_factor": 0.8505792845127281
+      }
+    },
+    {
+      "version": "model_v007",
+      "path": "models\\model_v007",
+      "created_at": "2026-04-06T22:13:36Z",
+      "metrics": {
+        "test_accuracy": 0.5349206349206349,
+        "classification_accuracy": 0.5349206349206349,
+        "executed_trade_win_rate": 0.46551724137931033,
+        "test_f1": null,
+        "test_sharpe": 0.43801812782411065,
+        "test_sortino": 0.4567666595777163,
+        "test_profit_factor": 0.9825966700978939
+      }
+    }
+  ]
+}

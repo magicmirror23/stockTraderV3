@@ -1,0 +1,867 @@
+{
+  "universe_version": "universe_v1",
+  "universe_label": "Current 52",
+  "as_of_date": "2026-04-06",
+  "generated_at": "2026-04-06T19:10:54Z",
+  "filters": {
+    "min_median_daily_value": 50000000.0,
+    "min_history_days": 180,
+    "min_data_completeness": 0.9,
+    "max_missing_ratio": 0.1,
+    "max_provider_failures": 3,
+    "max_stale_days": 10,
+    "max_zero_volume_ratio": 0.15,
+    "lookback_days": 365,
+    "interval": "1d"
+  },
+  "candidate_count": 52,
+  "selected_count": 51,
+  "selected_symbols": [
+    "HDFCBANK",
+    "RELIANCE",
+    "ICICIBANK",
+    "INFY",
+    "BHARTIARTL",
+    "SBIN",
+    "TCS",
+    "M_M",
+    "AXISBANK",
+    "BAJFINANCE",
+    "LT",
+    "KOTAKBANK",
+    "ITC",
+    "MARUTI",
+    "VEDL",
+    "TATASTEEL",
+    "HCLTECH",
+    "HINDALCO",
+    "SUNPHARMA",
+    "HINDUNILVR",
+    "POWERGRID",
+    "INDUSINDBK",
+    "NTPC",
+    "BAJAJ_AUTO",
+    "EICHERMOT",
+    "HEROMOTOCO",
+    "ADANIPORTS",
+    "ULTRACEMCO",
+    "APOLLOHOSP",
+    "TITAN",
+    "TECHM",
+    "ASIANPAINT",
+    "ONGC",
+    "BPCL",
+    "WIPRO",
+    "BANKBARODA",
+    "BAJAJFINSV",
+    "COALINDIA",
+    "DIVISLAB",
+    "ADANIENT",
+    "CIPLA",
+    "DRREDDY",
+    "HDFCLIFE",
+    "SBILIFE",
+    "JSWSTEEL",
+    "GRASIM",
+    "BRITANNIA",
+    "UPL",
+    "NESTLEIND",
+    "TATACONSUM",
+    "SHREECEM"
+  ],
+  "excluded_symbols": {
+    "TATAMOTORS": [
+      "insufficient_history",
+      "low_data_completeness",
+      "high_missing_ratio",
+      "illiquid",
+      "stale_data",
+      "high_zero_volume_ratio"
+    ]
+  },
+  "symbol_metrics": {
+    "RELIANCE": {
+      "history_days": 246,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.057471,
+      "median_daily_value": 15256142574.21,
+      "zero_volume_ratio": 0.004065,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 246
+    },
+    "TCS": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 8540119930.31,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "HDFCBANK": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 19242836483.12,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "INFY": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 11925649497.28,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "ICICIBANK": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 14906600550.3,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "HINDUNILVR": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 3475788930.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "SBIN": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 9168049452.72,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "BHARTIARTL": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 10571583082.98,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "KOTAKBANK": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 6295274467.06,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "LT": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 6318262449.5,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "AXISBANK": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 7047522591.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "ITC": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 5060807944.53,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "BAJFINANCE": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 6733949625.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "ASIANPAINT": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2375820529.69,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "MARUTI": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 4907966216.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "HCLTECH": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 3848812348.62,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "TITAN": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2636184628.42,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "SUNPHARMA": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 3576998601.22,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "WIPRO": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2250125997.94,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "ULTRACEMCO": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2704363417.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "NESTLEIND": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 1321879165.46,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "BANKBARODA": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2235237864.1,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "POWERGRID": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 3148047104.51,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "NTPC": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 3123475968.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "ONGC": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2329291263.56,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "JSWSTEEL": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 1608293952.57,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "TATASTEEL": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 4139882781.39,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "ADANIPORTS": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2725650307.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "TECHM": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2549946128.65,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "INDUSINDBK": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 3128365963.97,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "BAJAJFINSV": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2195497276.91,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "GRASIM": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 1569456675.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "CIPLA": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 1892305927.55,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "HDFCLIFE": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 1788826056.02,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "DRREDDY": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 1792159463.44,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "COALINDIA": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2165732329.09,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "DIVISLAB": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2132120252.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "BRITANNIA": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 1551011140.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "EICHERMOT": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2838564985.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "APOLLOHOSP": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2665545111.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "SBILIFE": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 1641286926.03,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "BPCL": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2261310919.37,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "HEROMOTOCO": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2817911312.5,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "TATACONSUM": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 1156506254.23,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "UPL": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 1443036412.46,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "HINDALCO": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 3687324937.51,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "BAJAJ_AUTO": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2972170710.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "SHREECEM": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 771278760.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "VEDL": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 4867967977.67,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "M_M": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 7530396899.81,
+      "zero_volume_ratio": 0.008163,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "ADANIENT": {
+      "history_days": 245,
+      "expected_days": 261,
+      "data_completeness": 1.0,
+      "missing_ratio": 0.061303,
+      "median_daily_value": 2105480802.0,
+      "zero_volume_ratio": 0.004082,
+      "stale_days": 4,
+      "provider_failure_attempts": 0,
+      "rows": 245
+    },
+    "TATAMOTORS": {
+      "history_days": 0,
+      "expected_days": 0,
+      "data_completeness": 0.0,
+      "missing_ratio": 1.0,
+      "median_daily_value": 0.0,
+      "zero_volume_ratio": 1.0,
+      "stale_days": 9999,
+      "provider_failure_attempts": 0,
+      "rows": 0
+    }
+  },
+  "symbol_tags": {
+    "RELIANCE": {
+      "sector": "Oil & Gas",
+      "industry_group": "Energy"
+    },
+    "TCS": {
+      "sector": "IT",
+      "industry_group": "Technology"
+    },
+    "HDFCBANK": {
+      "sector": "Banking",
+      "industry_group": "Financial Services"
+    },
+    "INFY": {
+      "sector": "IT",
+      "industry_group": "Technology"
+    },
+    "ICICIBANK": {
+      "sector": "Banking",
+      "industry_group": "Financial Services"
+    },
+    "HINDUNILVR": {
+      "sector": "FMCG",
+      "industry_group": "Consumer Staples"
+    },
+    "SBIN": {
+      "sector": "Banking",
+      "industry_group": "Financial Services"
+    },
+    "BHARTIARTL": {
+      "sector": "Unknown",
+      "industry_group": "Unknown"
+    },
+    "KOTAKBANK": {
+      "sector": "Banking",
+      "industry_group": "Financial Services"
+    },
+    "LT": {
+      "sector": "Infrastructure",
+      "industry_group": "Industrials"
+    },
+    "AXISBANK": {
+      "sector": "Banking",
+      "industry_group": "Financial Services"
+    },
+    "ITC": {
+      "sector": "FMCG",
+      "industry_group": "Consumer Staples"
+    },
+    "BAJFINANCE": {
+      "sector": "Finance",
+      "industry_group": "Financial Services"
+    },
+    "ASIANPAINT": {
+      "sector": "Consumer",
+      "industry_group": "Consumer Discretionary"
+    },
+    "MARUTI": {
+      "sector": "Auto",
+      "industry_group": "Automobile"
+    },
+    "HCLTECH": {
+      "sector": "IT",
+      "industry_group": "Technology"
+    },
+    "TITAN": {
+      "sector": "Consumer",
+      "industry_group": "Consumer Discretionary"
+    },
+    "SUNPHARMA": {
+      "sector": "Pharma",
+      "industry_group": "Healthcare"
+    },
+    "WIPRO": {
+      "sector": "IT",
+      "industry_group": "Technology"
+    },
+    "ULTRACEMCO": {
+      "sector": "Infrastructure",
+      "industry_group": "Industrials"
+    },
+    "NESTLEIND": {
+      "sector": "FMCG",
+      "industry_group": "Consumer Staples"
+    },
+    "BANKBARODA": {
+      "sector": "Banking",
+      "industry_group": "Financial Services"
+    },
+    "POWERGRID": {
+      "sector": "Unknown",
+      "industry_group": "Unknown"
+    },
+    "NTPC": {
+      "sector": "Unknown",
+      "industry_group": "Unknown"
+    },
+    "ONGC": {
+      "sector": "Oil & Gas",
+      "industry_group": "Energy"
+    },
+    "JSWSTEEL": {
+      "sector": "Metals",
+      "industry_group": "Materials"
+    },
+    "TATASTEEL": {
+      "sector": "Metals",
+      "industry_group": "Materials"
+    },
+    "ADANIPORTS": {
+      "sector": "Unknown",
+      "industry_group": "Unknown"
+    },
+    "TECHM": {
+      "sector": "IT",
+      "industry_group": "Technology"
+    },
+    "INDUSINDBK": {
+      "sector": "Banking",
+      "industry_group": "Financial Services"
+    },
+    "BAJAJFINSV": {
+      "sector": "Finance",
+      "industry_group": "Financial Services"
+    },
+    "GRASIM": {
+      "sector": "Unknown",
+      "industry_group": "Unknown"
+    },
+    "CIPLA": {
+      "sector": "Pharma",
+      "industry_group": "Healthcare"
+    },
+    "HDFCLIFE": {
+      "sector": "Finance",
+      "industry_group": "Financial Services"
+    },
+    "DRREDDY": {
+      "sector": "Pharma",
+      "industry_group": "Healthcare"
+    },
+    "COALINDIA": {
+      "sector": "Unknown",
+      "industry_group": "Unknown"
+    },
+    "DIVISLAB": {
+      "sector": "Pharma",
+      "industry_group": "Healthcare"
+    },
+    "BRITANNIA": {
+      "sector": "FMCG",
+      "industry_group": "Consumer Staples"
+    },
+    "EICHERMOT": {
+      "sector": "Unknown",
+      "industry_group": "Unknown"
+    },
+    "APOLLOHOSP": {
+      "sector": "Unknown",
+      "industry_group": "Unknown"
+    },
+    "SBILIFE": {
+      "sector": "Finance",
+      "industry_group": "Financial Services"
+    },
+    "BPCL": {
+      "sector": "Oil & Gas",
+      "industry_group": "Energy"
+    },
+    "HEROMOTOCO": {
+      "sector": "Auto",
+      "industry_group": "Automobile"
+    },
+    "TATACONSUM": {
+      "sector": "Unknown",
+      "industry_group": "Unknown"
+    },
+    "UPL": {
+      "sector": "Unknown",
+      "industry_group": "Unknown"
+    },
+    "HINDALCO": {
+      "sector": "Metals",
+      "industry_group": "Materials"
+    },
+    "BAJAJ_AUTO": {
+      "sector": "Auto",
+      "industry_group": "Automobile"
+    },
+    "SHREECEM": {
+      "sector": "Unknown",
+      "industry_group": "Unknown"
+    },
+    "VEDL": {
+      "sector": "Unknown",
+      "industry_group": "Unknown"
+    },
+    "M_M": {
+      "sector": "Auto",
+      "industry_group": "Automobile"
+    },
+    "ADANIENT": {
+      "sector": "Infrastructure",
+      "industry_group": "Industrials"
+    },
+    "TATAMOTORS": {
+      "sector": "Unknown",
+      "industry_group": "Unknown"
+    }
+  },
+  "bad_symbol_list": []
+}

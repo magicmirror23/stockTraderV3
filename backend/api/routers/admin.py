@@ -51,14 +51,11 @@ def _require_auth(authorization: str = Header(None)):
 
 
 def _run_train_sync() -> dict:
-    """Run training in a thread â€" never call from the event loop directly.
-
-    Auto-downloads missing data from Yahoo Finance if storage/raw/ is empty.
-    """
-    from backend.prediction_engine.training.trainer import train
+    """Run local/offline training in a worker thread."""
+    from backend.ml_platform.training_pipeline import run_local_training
     with _retrain_lock:
         _retrain_status["progress"] = "downloading_data"
-    return train()
+    return run_local_training()
 
 
 def _failure_payload(
@@ -75,6 +72,38 @@ def _failure_payload(
         "correlation_id": correlation_id,
         "details": details or {},
     }
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _is_production() -> bool:
+    return os.getenv("APP_ENV", "").strip().lower() in {"production", "prod"}
+
+
+def _retrain_disabled_reason() -> str | None:
+    inference_only = _env_bool("INFERENCE_ONLY", _is_production())
+    allow_prod_retrain = _env_bool("ALLOW_PROD_RETRAIN", False)
+    if inference_only:
+        return "inference_only_mode"
+    if _is_production() and not allow_prod_retrain:
+        return "prod_retrain_disabled"
+    return None
+
+
+def _check_retrain_admin_gate(authorization: str | None) -> None:
+    required_token = os.getenv("ADMIN_API_TOKEN", "").strip()
+    if not required_token:
+        return
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing admin bearer token")
+    supplied = authorization.split(" ", 1)[1].strip()
+    if supplied != required_token:
+        raise HTTPException(status_code=403, detail="Invalid admin bearer token")
 
 
 def _sync_model_to_prediction(entry: dict, correlation_id: str) -> dict | None:
@@ -133,13 +162,30 @@ async def retrain_status():
 
 
 @router.post("/retrain")
-async def retrain():
+async def retrain(authorization: str | None = Header(None)):
     """Trigger a model retrain.
 
     Training runs in a background thread so the event loop stays responsive
     for live-chart, bot, and other endpoints.
     """
     correlation_id = str(uuid.uuid4())
+    disabled_reason = _retrain_disabled_reason()
+    if disabled_reason:
+        return JSONResponse(
+            status_code=403,
+            content=_failure_payload(
+                correlation_id=correlation_id,
+                reason="retrain_disabled",
+                message="Retraining is disabled for this deployment.",
+                details={
+                    "disabled_reason": disabled_reason,
+                    "inference_only": _env_bool("INFERENCE_ONLY", _is_production()),
+                    "allow_prod_retrain": _env_bool("ALLOW_PROD_RETRAIN", False),
+                },
+            ),
+        )
+    _check_retrain_admin_gate(authorization)
+
     with _retrain_lock:
         if _retrain_status["running"]:
             return {
@@ -218,6 +264,37 @@ async def retrain():
                     reason=exc.reason,
                     message=str(exc),
                     details=exc.details,
+                ),
+            )
+        # Safety net: convert common sklearn finite-value errors into structured retrain failures.
+        msg = str(exc)
+        if isinstance(exc, ValueError) and (
+            "contains infinity" in msg.lower()
+            or "too large for dtype" in msg.lower()
+            or "non-finite" in msg.lower()
+        ):
+            logger.warning("[cid=%s] Retrain rejected (invalid features): %s", correlation_id, msg)
+            record_retrain("failed")
+            details = {
+                "error_type": type(exc).__name__,
+                "error": msg,
+            }
+            with _retrain_lock:
+                _retrain_status.update(
+                    running=False,
+                    progress="failed",
+                    error=msg,
+                    reason="invalid_feature_values",
+                    details=details,
+                    correlation_id=correlation_id,
+                )
+            return JSONResponse(
+                status_code=200,
+                content=_failure_payload(
+                    correlation_id=correlation_id,
+                    reason="invalid_feature_values",
+                    message="Retrain rejected due to invalid numeric feature values.",
+                    details=details,
                 ),
             )
         logger.exception("[cid=%s] Retrain failed", correlation_id)

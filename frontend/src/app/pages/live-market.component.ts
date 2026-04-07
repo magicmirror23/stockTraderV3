@@ -95,6 +95,13 @@ export class LiveMarketComponent implements OnInit, OnDestroy {
 
     // Auto-load market snapshot (shows last close when market is closed)
     this.loadMarketSnapshot();
+
+    // Auto-start WebSocket streaming after a short delay to let snapshot load first
+    setTimeout(() => {
+      if (!this.connected) {
+        this.startStream();
+      }
+    }, 1500);
   }
 
   /** Load market snapshot - when market is closed, shows last close prices automatically */

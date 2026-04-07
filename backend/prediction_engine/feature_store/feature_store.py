@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -76,6 +77,19 @@ FEATURE_COLUMNS: list[str] = [
     "day_of_week",
 ]
 
+# Cross-sectional features computed after concat (require multiple tickers on same dates)
+CROSS_SECTIONAL_FEATURE_COLUMNS: list[str] = [
+    "stock_return_1d_minus_benchmark_1d",
+    "stock_return_5d_minus_benchmark_5d",
+    "sector_relative_strength_5d",
+    "sector_relative_strength_20d",
+    "benchmark_relative_momentum",
+    "market_breadth_feature",
+    "sector_breadth_feature",
+    "beta_to_benchmark",
+    "rolling_corr_to_benchmark",
+]
+
 
 def _load_ticker_csv(ticker: str, data_dir: Path) -> pd.DataFrame:
     base = str(ticker).strip().upper()
@@ -109,6 +123,35 @@ def _load_ticker_csv(ticker: str, data_dir: Path) -> pd.DataFrame:
             continue
         df = pd.read_csv(path, parse_dates=["Date"])
         return df.sort_values("Date").reset_index(drop=True)
+
+    # Optional hydration path: materialize CSV from canonical local DB store.
+    hydrate_enabled = os.getenv("FEATURE_AUTO_HYDRATE_FROM_DB", "true").strip().lower() in {
+        "1", "true", "yes", "on", "y"
+    }
+    if hydrate_enabled:
+        try:
+            from backend.market_data_service.local_access import LocalMarketDataAccess
+
+            access = LocalMarketDataAccess()
+            end_date = datetime.now(timezone.utc).date().isoformat()
+            start_date = (
+                pd.Timestamp(datetime.now(timezone.utc).date()) - pd.DateOffset(days=365 * 5)
+            ).date().isoformat()
+            result = access.export_symbol_to_csv(
+                symbol=ticker,
+                data_dir=data_dir,
+                start_date=start_date,
+                end_date=end_date,
+                interval="1d",
+                min_rows=20,
+            )
+            if result.status == "ok" and result.csv_path:
+                path = Path(result.csv_path)
+                if path.exists():
+                    df = pd.read_csv(path, parse_dates=["Date"])
+                    return df.sort_values("Date").reset_index(drop=True)
+        except Exception as exc:
+            logger.debug("DB hydration skipped for %s: %s", ticker, exc)
 
     raise FileNotFoundError(
         f"No data file for {ticker}. Tried: {', '.join(f'{n}.csv' for n in seen)}"
@@ -184,6 +227,118 @@ def _compute_features(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
     return feat
 
 
+def _add_cross_sectional_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Add benchmark-relative and breadth features across the full universe.
+
+    These features compare each stock's behavior to the cross-sectional
+    average on the same date, providing relative context.
+    """
+    df = df.copy()
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.sort_values(["ticker", "date"]).reset_index(drop=True)
+
+    # Ensure required columns exist
+    for col, default in [("return_1d", 0.0), ("return_5d", 0.0), ("close", 0.0)]:
+        if col not in df.columns:
+            df[col] = default
+
+    # Benchmark = cross-sectional mean return per date
+    benchmark_1d = df.groupby("date")["return_1d"].transform("mean")
+    benchmark_5d = df.groupby("date")["return_5d"].transform("mean")
+
+    df["stock_return_1d_minus_benchmark_1d"] = df["return_1d"] - benchmark_1d
+    df["stock_return_5d_minus_benchmark_5d"] = df["return_5d"] - benchmark_5d
+
+    # Sector-relative strength
+    try:
+        from backend.ml_platform.universe_definitions import get_symbol_tags
+        df["_sector"] = df["ticker"].map(lambda t: get_symbol_tags(str(t)).get("sector", "Unknown"))
+    except Exception:
+        df["_sector"] = "Unknown"
+
+    sector_return_5d = df.groupby(["date", "_sector"])["return_5d"].transform("mean")
+    df["sector_relative_strength_5d"] = df["return_5d"] - sector_return_5d
+
+    # For 20d sector relative strength, use rolling returns
+    g = df.groupby("ticker", sort=False)
+    if "return_10d" in df.columns:
+        rolling_20d = g["close"].pct_change(20).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    else:
+        rolling_20d = g["close"].pct_change(20).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    df["_return_20d"] = rolling_20d
+    sector_return_20d = df.groupby(["date", "_sector"])["_return_20d"].transform("mean")
+    df["sector_relative_strength_20d"] = df["_return_20d"] - sector_return_20d
+
+    # Benchmark relative momentum (stock 10d mom - benchmark 10d mom)
+    benchmark_mom = df.groupby("date")["return_5d"].transform("mean")
+    benchmark_mom_rolling = benchmark_mom  # already cross-sectional per date
+    if "momentum_10" in df.columns:
+        df["benchmark_relative_momentum"] = df["momentum_10"] - df.groupby("date")["momentum_10"].transform("mean")
+    else:
+        df["benchmark_relative_momentum"] = df["return_5d"] - benchmark_5d
+
+    # Market breadth: fraction of stocks with positive 1d return
+    df["market_breadth_feature"] = df.groupby("date")["return_1d"].transform(
+        lambda s: float((s > 0).mean())
+    )
+
+    # Sector breadth: fraction of stocks in same sector with positive 1d return
+    df["sector_breadth_feature"] = df.groupby(["date", "_sector"])["return_1d"].transform(
+        lambda s: float((s > 0).mean()) if len(s) > 1 else 0.5
+    )
+
+    # Beta to benchmark (rolling 63-day covariance / variance)
+    def _rolling_beta(group):
+        dates = group["date"].values
+        ret = group["return_1d"].values
+        bm = group["_benchmark_1d"].values
+        betas = np.full(len(ret), np.nan)
+        window = 63
+        for i in range(window, len(ret)):
+            r_slice = ret[i - window:i]
+            b_slice = bm[i - window:i]
+            mask = np.isfinite(r_slice) & np.isfinite(b_slice)
+            if mask.sum() < 20:
+                continue
+            cov = np.cov(r_slice[mask], b_slice[mask])
+            var_bm = cov[1, 1]
+            if var_bm > 1e-12:
+                betas[i] = cov[0, 1] / var_bm
+        return pd.Series(betas, index=group.index)
+
+    df["_benchmark_1d"] = benchmark_1d
+    df["beta_to_benchmark"] = df.groupby("ticker", group_keys=False).apply(_rolling_beta, include_groups=False)
+
+    # Rolling correlation to benchmark (20-day)
+    def _rolling_corr(group):
+        ret = group["return_1d"].values
+        bm = group["_benchmark_1d"].values
+        corrs = np.full(len(ret), np.nan)
+        window = 20
+        for i in range(window, len(ret)):
+            r_slice = ret[i - window:i]
+            b_slice = bm[i - window:i]
+            mask = np.isfinite(r_slice) & np.isfinite(b_slice)
+            if mask.sum() < 10:
+                continue
+            cc = np.corrcoef(r_slice[mask], b_slice[mask])
+            if np.isfinite(cc[0, 1]):
+                corrs[i] = cc[0, 1]
+        return pd.Series(corrs, index=group.index)
+
+    df["rolling_corr_to_benchmark"] = df.groupby("ticker", group_keys=False).apply(_rolling_corr, include_groups=False)
+
+    # Cleanup temp columns
+    df.drop(columns=["_sector", "_return_20d", "_benchmark_1d"], inplace=True, errors="ignore")
+
+    # Fill NaN in cross-sectional features
+    for col in CROSS_SECTIONAL_FEATURE_COLUMNS:
+        if col in df.columns:
+            df[col] = df[col].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+    return df
+
+
 def build_features(
     tickers: list[str],
     start: str | datetime | None = None,
@@ -212,8 +367,13 @@ def build_features(
         result = result[result["date"] <= pd.Timestamp(end)]
 
     result = result.dropna().reset_index(drop=True)
+
+    # Add cross-sectional / benchmark-relative features (require all tickers)
+    result = _add_cross_sectional_features(result)
+
     _write_manifest(tickers, result)
-    return result[FEATURE_COLUMNS]
+    all_cols = [c for c in FEATURE_COLUMNS + CROSS_SECTIONAL_FEATURE_COLUMNS if c in result.columns]
+    return result[all_cols]
 
 
 def get_features_for_inference(

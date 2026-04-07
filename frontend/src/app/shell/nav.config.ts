@@ -48,6 +48,15 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    heading: 'Intraday',
+    items: [
+      { label: 'Intraday Models', icon: 'lightning-charge-fill', route: '/intraday/models' },
+      { label: 'Options Signals', icon: 'bar-chart-steps',      route: '/intraday/options' },
+      { label: 'Execution',       icon: 'crosshair',            route: '/intraday/execution' },
+      { label: 'Supervisor',      icon: 'shield-check',         route: '/intraday/supervisor' },
+    ],
+  },
+  {
     heading: 'System',
     items: [
       { label: 'Models',       icon: 'cpu',                  route: '/system/models' },

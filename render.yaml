@@ -102,6 +102,24 @@ services:
         value: "false"
       - key: MARKET_DATA_BACKGROUND_REFRESH_ENABLED
         value: "false"
+      - key: MDS_SCHEDULER_ENABLED
+        value: "true"
+      - key: MDS_BACKFILL_ON_START
+        value: "false"
+      - key: MDS_SCHEDULER_REFRESH_MINUTES
+        value: "240"
+      - key: MDS_SCHEDULER_RETRY_MINUTES
+        value: "30"
+      - key: MDS_SCHEDULER_METADATA_MINUTES
+        value: "120"
+      - key: TWELVE_DATA_API_KEY
+        value: ""
+      - key: MDS_PROVIDER_MAX_RETRIES
+        value: "2"
+      - key: MDS_PROVIDER_COOLDOWN_S
+        value: "180"
+      - key: MDS_PROVIDER_FAILURE_THRESHOLD
+        value: "3"
       - key: PRICE_FEED_AUTO_DOWNLOAD
         value: "false"
       - key: MARKET_DATA_BOOTSTRAP_LIMIT
@@ -178,6 +196,44 @@ services:
         value: "5"
       - key: TRAIN_DEFAULT_MODEL
         value: lightgbm
+      - key: INFERENCE_ONLY
+        value: "true"
+      - key: ALLOW_PROD_RETRAIN
+        value: "false"
+      - key: MODEL_REGISTRY_DIR
+        value: models
+      - key: UNIVERSE_VERSION
+        value: universe_v1
+      - key: TRAIN_UNIVERSE_VERSION
+        value: universe_v1
+      - key: TRAINING_ARCHITECTURE
+        value: simple_classifier
+      - key: RANKING_MODEL_MODE
+        value: classification
+      - key: RANKING_HORIZON_BARS
+        value: "1"
+      - key: RANKING_MAX_POSITIONS
+        value: "8"
+      - key: RANKING_MIN_CONFIDENCE
+        value: "0.55"
+      - key: RANKING_DOWNSIDE_PENALTY
+        value: "0.50"
+      - key: UNIVERSE_SNAPSHOT_DIR
+        value: storage/universes
+      - key: UNIVERSE_MIN_MEDIAN_DAILY_VALUE
+        value: "50000000"
+      - key: UNIVERSE_MIN_HISTORY_DAYS
+        value: "180"
+      - key: UNIVERSE_MIN_COMPLETENESS
+        value: "0.90"
+      - key: UNIVERSE_MAX_MISSING_RATIO
+        value: "0.10"
+      - key: UNIVERSE_MAX_PROVIDER_FAILURES
+        value: "3"
+      - key: UNIVERSE_MAX_STALE_DAYS
+        value: "10"
+      - key: UNIVERSE_MAX_ZERO_VOLUME_RATIO
+        value: "0.15"
       - key: TRAIN_MIN_DAYS
         value: "120"
       - key: VAL_MIN_DAYS
@@ -301,7 +357,49 @@ services:
       - key: YF_CIRCUIT_COOLDOWN_S
         value: "300"
       - key: TRAIN_DATA_SOURCE_MODE
-        value: "local_only"
+        value: "local_store_only"
+      - key: INFERENCE_ONLY
+        value: "true"
+      - key: ALLOW_PROD_RETRAIN
+        value: "false"
+      - key: MODEL_REGISTRY_DIR
+        value: models
+      - key: UNIVERSE_VERSION
+        value: universe_v1
+      - key: TRAIN_UNIVERSE_VERSION
+        value: universe_v1
+      - key: BACKTEST_UNIVERSE_VERSION
+        value: universe_v1
+      - key: TRAINING_ARCHITECTURE
+        value: simple_classifier
+      - key: RANKING_MODEL_MODE
+        value: classification
+      - key: RANKING_HORIZON_BARS
+        value: "1"
+      - key: RANKING_MAX_POSITIONS
+        value: "8"
+      - key: RANKING_MIN_CONFIDENCE
+        value: "0.55"
+      - key: RANKING_DOWNSIDE_PENALTY
+        value: "0.50"
+      - key: BACKTEST_MAX_TICKERS
+        value: "120"
+      - key: UNIVERSE_SNAPSHOT_DIR
+        value: storage/universes
+      - key: UNIVERSE_MIN_MEDIAN_DAILY_VALUE
+        value: "50000000"
+      - key: UNIVERSE_MIN_HISTORY_DAYS
+        value: "180"
+      - key: UNIVERSE_MIN_COMPLETENESS
+        value: "0.90"
+      - key: UNIVERSE_MAX_MISSING_RATIO
+        value: "0.10"
+      - key: UNIVERSE_MAX_PROVIDER_FAILURES
+        value: "3"
+      - key: UNIVERSE_MAX_STALE_DAYS
+        value: "10"
+      - key: UNIVERSE_MAX_ZERO_VOLUME_RATIO
+        value: "0.15"
       - key: SYNC_MODEL_TO_PREDICTION
         value: "true"
       - key: MODEL_SYNC_TOKEN

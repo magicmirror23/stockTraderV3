@@ -25,13 +25,14 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from backend.shared.schemas import (
     ExecutionMode,
     OrderStatus,
     PortfolioState,
     RiskLimits,
+    SignalDirection,
     TradeResult,
     TradingSignal,
 )
@@ -44,7 +45,8 @@ from backend.shared.execution import (
     SimulationConfig,
     apply_fill_to_portfolio,
 )
-from backend.shared.signal_generator import SignalGenerator
+if TYPE_CHECKING:
+    from backend.shared.signal_generator import SignalGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +65,7 @@ class TradingRunner:
         initial_capital: float = 100_000.0,
         risk_limits: RiskLimits | None = None,
         sim_config: SimulationConfig | None = None,
-        signal_generator: SignalGenerator | None = None,
+        signal_generator: "SignalGenerator | None" = None,
     ) -> None:
         self.mode = mode
         self.risk_limits = risk_limits or RiskLimits()
@@ -131,51 +133,58 @@ class TradingRunner:
             if price is None:
                 continue
             state = self.executor.submit_order(order, self.portfolio, price, ts)
-            if state.status == OrderStatus.FILLED:
-                result = apply_fill_to_portfolio(
-                    state.fills[0], self.portfolio, order,
-                    self.executor, self._bar_index,
-                )
-                if result:
-                    self._completed_trades.append(result)
-                    bar_trades.append(result)
-
-        # --- 2. Process new signals ---
-        for signal in signals:
-            if signal.no_trade_flag:
-                self._no_trade_count += 1
-                continue
-
-            price = prices.get(signal.instrument)
-            if price is None:
-                continue
-
-            orders = self.strategy.on_signal(signal, self.portfolio, price)
-            if not orders:
-                self._rejected_count += 1
-                continue
-
-            for order in orders:
-                state = self.executor.submit_order(
-                    order, self.portfolio, price, ts,
-                )
-                if state.status == OrderStatus.FILLED:
+            if state.status in {OrderStatus.FILLED, OrderStatus.PARTIAL}:
+                for fill in state.fills:
                     result = apply_fill_to_portfolio(
-                        state.fills[0], self.portfolio, order,
+                        fill, self.portfolio, order,
                         self.executor, self._bar_index,
                     )
                     if result:
                         self._completed_trades.append(result)
                         bar_trades.append(result)
-                elif state.status == OrderStatus.REJECTED:
+
+        # --- 2. Process new signals ---
+        actionable = [s for s in signals if not s.no_trade_flag]
+        self._no_trade_count += len(signals) - len(actionable)
+
+        batched_orders = self.strategy.build_orders(actionable, self.portfolio, prices)
+        for signal in actionable:
+            # keep rejection accounting comparable with previous behavior
+            if signal.signal_direction != SignalDirection.FLAT:
+                has_signal_order = any(
+                    o.signal is signal or o.instrument == signal.instrument
+                    for o in batched_orders
+                )
+                if not has_signal_order:
                     self._rejected_count += 1
+
+        for order in batched_orders:
+            price = prices.get(order.instrument)
+            if price is None:
+                continue
+
+            state = self.executor.submit_order(
+                order, self.portfolio, price, ts,
+            )
+            if state.status in {OrderStatus.FILLED, OrderStatus.PARTIAL}:
+                for fill in state.fills:
+                    result = apply_fill_to_portfolio(
+                        fill, self.portfolio, order,
+                        self.executor, self._bar_index,
+                    )
+                    if result:
+                        self._completed_trades.append(result)
+                        bar_trades.append(result)
+            elif state.status == OrderStatus.REJECTED:
+                self._rejected_count += 1
 
         # --- 3. Mark to market ---
         for instrument, pos in self.portfolio.positions.items():
             if pos.is_open and instrument in prices:
                 pos.mark_to_market(prices[instrument])
 
-        self._bar_index += 1
+        self.strategy.advance_bar(self.portfolio)
+        self._bar_index = self.strategy.bar_index
         return bar_trades
 
     # ------------------------------------------------------------------

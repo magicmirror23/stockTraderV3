@@ -12,14 +12,11 @@ ensuring identical order lifecycle semantics across modes.
 from __future__ import annotations
 
 import logging
-import math
 import random
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
-from typing import Protocol
+from datetime import datetime, timedelta, timezone
 
 from backend.shared.schemas import (
-    ExecutionMode,
     Fill,
     OrderRequest,
     OrderSide,
@@ -111,8 +108,9 @@ class BacktestExecutor(ExecutionAdapter):
         market_price: float,
         timestamp: datetime | None = None,
     ) -> OrderState:
-        ts = timestamp or datetime.now(timezone.utc)
-        state = OrderState(request=order, status=OrderStatus.PENDING, updated_at=ts)
+        submit_ts = timestamp or datetime.now(timezone.utc)
+        fill_ts = submit_ts + timedelta(milliseconds=max(self.config.latency_ms, 0))
+        state = OrderState(request=order, status=OrderStatus.PENDING, updated_at=submit_ts)
 
         # Fill probability check
         if random.random() > self.config.fill_probability:
@@ -127,9 +125,18 @@ class BacktestExecutor(ExecutionAdapter):
             exec_price = market_price * (1 - self.config.slippage_pct)
         exec_price = round(exec_price, 2)
 
+        # Optional partial fill simulation
+        fill_qty = order.quantity
+        if (
+            self.config.partial_fill_prob > 0
+            and order.quantity > 1
+            and random.random() < self.config.partial_fill_prob
+        ):
+            fill_qty = max(1, int(order.quantity * random.uniform(0.3, 0.9)))
+
         # Check cash for buys
         if order.side == OrderSide.BUY:
-            cost = order.quantity * exec_price
+            cost = fill_qty * exec_price
             if cost > portfolio.cash:
                 state.status = OrderStatus.REJECTED
                 state.reject_reason = "insufficient_cash"
@@ -141,11 +148,11 @@ class BacktestExecutor(ExecutionAdapter):
             order_id=order.id,
             instrument=order.instrument,
             side=order.side,
-            quantity=order.quantity,
+            quantity=fill_qty,
             price=exec_price,
             commission=0.0,  # calculated at trade close
             slippage=slippage,
-            timestamp=ts,
+            timestamp=fill_ts,
         )
         state.apply_fill(fill)
         return state
@@ -183,7 +190,7 @@ class PaperExecutor(ExecutionAdapter):
 
     def __init__(self, config: SimulationConfig | None = None) -> None:
         self.config = config or SimulationConfig(
-            partial_fill_prob=0.05,   # 5% chance of partial fills in paper
+            partial_fill_prob=0.10,   # 10% chance of partial fills in paper
         )
         self._bt_executor = BacktestExecutor(self.config)
 
@@ -196,16 +203,6 @@ class PaperExecutor(ExecutionAdapter):
     ) -> OrderState:
         # Delegate to backtest executor for fill logic
         state = self._bt_executor.submit_order(order, portfolio, market_price, timestamp)
-
-        # Simulate partial fill
-        if (state.status == OrderStatus.FILLED
-                and self.config.partial_fill_prob > 0
-                and random.random() < self.config.partial_fill_prob
-                and order.quantity > 1):
-            partial_qty = max(1, int(order.quantity * random.uniform(0.3, 0.9)))
-            state.filled_qty = partial_qty
-            state.fills[0].quantity = partial_qty
-            state.status = OrderStatus.PARTIAL
 
         return state
 
@@ -299,6 +296,15 @@ def apply_fill_to_portfolio(
         if pos is None or not pos.is_open:
             # New position
             atr = order.metadata.get("atr_at_entry", 0.0) if order.metadata else 0.0
+            sector = order.metadata.get("sector", "UNKNOWN") if order.metadata else "UNKNOWN"
+            strategy_mode = order.metadata.get("strategy_mode", "") if order.metadata else ""
+            risk_per_share = (
+                float(order.metadata.get("risk_per_share", 0.0))
+                if order.metadata
+                else 0.0
+            )
+            if risk_per_share <= 0 and order.stop_loss is not None:
+                risk_per_share = abs(fill.price - order.stop_loss)
             pos = Position(
                 instrument=instrument,
                 quantity=fill.quantity,
@@ -311,8 +317,13 @@ def apply_fill_to_portfolio(
                 entry_bar_index=bar_index,
                 original_quantity=fill.quantity,
                 atr_at_entry=atr,
+                sector=sector,
+                strategy_mode=strategy_mode,
+                risk_per_share=risk_per_share,
             )
             portfolio.positions[instrument] = pos
+            if sector and sector != "UNKNOWN":
+                portfolio.sector_map[instrument] = sector
         else:
             # Add to existing (shouldn't happen with no-pyramid rule)
             total_value = pos.avg_entry_price * pos.quantity + fill.price * fill.quantity
@@ -348,10 +359,18 @@ def apply_fill_to_portfolio(
         else:
             portfolio.consecutive_losses = 0
 
-        if pos.quantity <= 0:
-            portfolio.positions[instrument] = Position(instrument=instrument)
-
         exit_reason = order.metadata.get("exit_reason", "signal")
+        if exit_reason in {"stop_loss", "trailing_stop"}:
+            cooldown_bars = int(order.metadata.get("cooldown_bars", 0))
+            if cooldown_bars > 0:
+                portfolio.set_symbol_cooldown(instrument, cooldown_bars)
+
+        if pos.quantity <= 0:
+            portfolio.positions[instrument] = Position(
+                instrument=instrument,
+                sector=pos.sector,
+                strategy_mode=pos.strategy_mode,
+            )
 
         return TradeResult(
             instrument=instrument,

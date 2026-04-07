@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from backend.market_data_service.storage import MarketDataStore
 from backend.prediction_engine.training.trainer import (
     TrainingConfig,
     _ensure_data_available,
@@ -32,21 +33,27 @@ def test_ensure_data_refreshes_undersized_csv(monkeypatch, tmp_path: Path):
     # Existing file is present but too short to support training windows.
     _make_ohlcv(80).to_csv(data_dir / "RELIANCE.csv", index=False)
 
-    class _FakeConnector:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        def fetch(self, ticker, start, end):
-            assert ticker == "RELIANCE"
-            return _make_ohlcv(250)
+    # Seed canonical local store so trainer can hydrate CSV from DB without
+    # calling external providers.
+    store = MarketDataStore()
+    seeded = _make_ohlcv(250).rename(
+        columns={
+            "Date": "timestamp",
+            "Open": "open",
+            "High": "high",
+            "Low": "low",
+            "Close": "close",
+            "Volume": "volume",
+        }
+    )
+    seeded["symbol"] = "RELIANCE"
+    seeded["interval"] = "1d"
+    seeded["source"] = "unit_test"
+    store.upsert_bars(seeded)
 
     monkeypatch.setenv("TRAIN_DOWNLOAD_MIN_RAW_ROWS", "200")
     monkeypatch.setenv("TRAIN_DOWNLOAD_LOOKBACK_DAYS", "730")
-    monkeypatch.setenv("TRAIN_DOWNLOAD_EXTENDED_LOOKBACK_DAYS", "730")
-    monkeypatch.setattr(
-        "backend.prediction_engine.data_pipeline.connector_yahoo.YahooConnector",
-        _FakeConnector,
-    )
+    monkeypatch.setenv("TRAIN_DATA_SOURCE_MODE", "local_store_only")
 
     cfg = TrainingConfig(
         train_min_days=20,
@@ -66,9 +73,9 @@ def test_ensure_data_refreshes_undersized_csv(monkeypatch, tmp_path: Path):
     )
 
     assert available == ["RELIANCE"]
-    assert report["downloaded"] == ["RELIANCE"]
+    assert report["hydrated"] == ["RELIANCE"]
     assert report["raw_rows_available"]["RELIANCE"] >= 200
-    assert len(pd.read_csv(data_dir / "RELIANCE.csv")) == 250
+    assert len(pd.read_csv(data_dir / "RELIANCE.csv")) >= 200
 
 
 def test_ensure_data_skips_download_when_existing_is_sufficient(monkeypatch, tmp_path: Path):

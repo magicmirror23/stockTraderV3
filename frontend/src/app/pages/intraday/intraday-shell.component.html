@@ -1,0 +1,24 @@
+<!-- Intraday Trading Shell -->
+<div class="intra">
+  <header class="intra__header">
+    <h1 class="intra__title"><i class="bi bi-lightning-charge-fill"></i> Intraday Trading</h1>
+    <nav class="intra__tabs">
+      <a class="intra__tab" routerLink="models" routerLinkActive="intra__tab--active">
+        <i class="bi bi-cpu"></i> Models
+      </a>
+      <a class="intra__tab" routerLink="options" routerLinkActive="intra__tab--active">
+        <i class="bi bi-bar-chart-steps"></i> Options Signals
+      </a>
+      <a class="intra__tab" routerLink="execution" routerLinkActive="intra__tab--active">
+        <i class="bi bi-crosshair"></i> Execution Monitor
+      </a>
+      <a class="intra__tab" routerLink="supervisor" routerLinkActive="intra__tab--active">
+        <i class="bi bi-shield-check"></i> Trade Supervisor
+      </a>
+    </nav>
+  </header>
+
+  <div class="intra__content">
+    <router-outlet />
+  </div>
+</div>

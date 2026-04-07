@@ -63,6 +63,14 @@ class ExecutionMode(str, enum.Enum):
     BACKTEST = "backtest"
 
 
+class StrategyMode(str, enum.Enum):
+    AUTO = "auto"
+    MOMENTUM = "momentum"
+    BREAKOUT = "breakout"
+    MEAN_REVERSION = "mean_reversion"
+    LOW_VOL_TREND = "low_vol_trend_following"
+
+
 # =====================================================================
 #  Trading Signal (output of prediction engine)
 # =====================================================================
@@ -89,6 +97,10 @@ class TradingSignal:
     model_version: str = ""
     top_features: list[tuple[str, float]] = field(default_factory=list)
     recommended_holding_horizon: int = 1     # bars
+    strategy_mode_hint: StrategyMode = StrategyMode.AUTO
+    sector: str = "UNKNOWN"
+    industry: str = "UNKNOWN"
+    ranking_score: float = 0.0
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -175,6 +187,10 @@ class Position:
     original_quantity: int = 0          # qty at entry (before partial TP)
     partial_tp_done: bool = False       # True after first scale-out
     atr_at_entry: float = 0.0           # ATR when position was opened
+    sector: str = "UNKNOWN"
+    strategy_mode: str = ""
+    risk_per_share: float = 0.0         # abs(entry - stop_loss)
+    max_favorable_excursion: float = 0.0
 
     @property
     def is_open(self) -> bool:
@@ -192,8 +208,16 @@ class Position:
         if self.quantity > 0:
             self.unrealised_pnl = (current_price - self.avg_entry_price) * self.quantity
             self.trailing_high = max(self.trailing_high, current_price)
+            self.max_favorable_excursion = max(
+                self.max_favorable_excursion,
+                current_price - self.avg_entry_price,
+            )
         elif self.quantity < 0:
             self.unrealised_pnl = (self.avg_entry_price - current_price) * abs(self.quantity)
+            self.max_favorable_excursion = max(
+                self.max_favorable_excursion,
+                self.avg_entry_price - current_price,
+            )
 
 
 # =====================================================================
@@ -211,6 +235,9 @@ class PortfolioState:
     consecutive_losses: int = 0             # running count of consecutive losses
     total_commission: float = 0.0
     execution_mode: ExecutionMode = ExecutionMode.PAPER
+    day_start_equity: float | None = None
+    sector_map: dict[str, str] = field(default_factory=dict)
+    symbol_cooldowns: dict[str, int] = field(default_factory=dict)
 
     @property
     def equity(self) -> float:
@@ -231,6 +258,45 @@ class PortfolioState:
             for p in self.positions.values()
             if p.is_open
         )
+
+    def sector_exposure(self) -> dict[str, float]:
+        exposure: dict[str, float] = {}
+        for instrument, pos in self.positions.items():
+            if not pos.is_open:
+                continue
+            sector = pos.sector or self.sector_map.get(instrument, "UNKNOWN")
+            exposure[sector] = exposure.get(sector, 0.0) + abs(pos.quantity) * pos.avg_entry_price
+        return exposure
+
+    def portfolio_heat(self) -> float:
+        equity = max(self.equity, 1.0)
+        risk_budget = 0.0
+        for pos in self.positions.values():
+            if not pos.is_open:
+                continue
+            if pos.stop_loss is None:
+                continue
+            per_share = abs(pos.avg_entry_price - pos.stop_loss)
+            risk_budget += per_share * abs(pos.quantity)
+        return risk_budget / equity
+
+    def decrement_cooldowns(self) -> None:
+        expired: list[str] = []
+        for symbol, bars_left in self.symbol_cooldowns.items():
+            remaining = bars_left - 1
+            if remaining <= 0:
+                expired.append(symbol)
+            else:
+                self.symbol_cooldowns[symbol] = remaining
+        for symbol in expired:
+            self.symbol_cooldowns.pop(symbol, None)
+
+    def set_symbol_cooldown(self, symbol: str, bars: int) -> None:
+        if bars > 0:
+            self.symbol_cooldowns[symbol] = bars
+
+    def in_cooldown(self, symbol: str) -> bool:
+        return self.symbol_cooldowns.get(symbol, 0) > 0
 
 
 # =====================================================================
@@ -254,6 +320,12 @@ class RiskLimits:
     max_holding_bars: int = 30               # force-close after N bars
     max_sector_exposure_pct: float = 0.40
     volatility_circuit_breaker: float = 0.50 # pause if annualised vol > 50%
+    max_capital_per_trade_pct: float = 0.12
+    max_portfolio_heat_pct: float = 0.18
+    max_daily_trades: int = 20
+    symbol_cooldown_bars: int = 5
+    high_vol_no_trade_threshold: float = 0.75
+    high_vol_min_confidence: float = 0.70
 
     # --- Adaptive / ATR-based stops ---
     atr_stop_multiplier: float = 1.5         # SL = entry - ATR × 1.5
@@ -270,6 +342,8 @@ class RiskLimits:
     partial_tp_enabled: bool = True
     partial_tp_fraction: float = 0.33        # close 33% of position
     partial_tp_trigger_pct: float = 0.5      # at 50% of TP target
+    profit_lock_trigger_r: float = 1.0       # lock profits after +1R
+    profit_lock_fraction: float = 0.35       # keep at least 35% of open gains
 
     # --- Momentum confirmation ---
     require_momentum_confirm: bool = True    # skip if momentum opposes signal

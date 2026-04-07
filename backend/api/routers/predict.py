@@ -3,11 +3,11 @@
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException
 
+from backend.ml_platform.inference_pipeline import SchemaMismatchError
 from backend.api.schemas import (
     ActionEnum,
     BatchPredictRequest,
@@ -28,7 +28,10 @@ router = APIRouter(tags=["prediction"])
 def _get_model():
     mgr = ModelManager()
     if mgr.model is None or mgr.status != "loaded":
-        raise HTTPException(status_code=503, detail="Model not loaded")
+        try:
+            mgr.load_latest()
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"Model not loaded: {exc}") from exc
     return mgr
 
 
@@ -48,53 +51,65 @@ def _shap_top_features(model, X, top_k: int = 5) -> list[str]:
 @router.post("/predict", response_model=PredictResponse)
 async def predict(req: PredictRequest):
     mgr = _get_model()
-    model = mgr.model
+    _ = mgr.model
 
-    from backend.prediction_engine.feature_store.feature_store import (
-        get_features_for_inference,
-        FEATURE_COLUMNS,
-    )
-    import pandas as pd
-
-    try:
-        feat_dict = get_features_for_inference(req.ticker)
-    except (FileNotFoundError, ValueError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
-
-    numeric_cols = [c for c in FEATURE_COLUMNS if c not in ("ticker", "date")]
-    X = pd.DataFrame([{c: feat_dict[c] for c in numeric_cols}])
+    if req.features:
+        feat_dict = dict(req.features)
+        ticker = req.ticker or "CUSTOM"
+    else:
+        if not req.ticker:
+            raise HTTPException(
+                status_code=400,
+                detail="Provide either ticker or features payload.",
+            )
+        from backend.prediction_engine.feature_store.feature_store import get_features_for_inference
+        ticker = req.ticker
+        try:
+            feat_dict = get_features_for_inference(req.ticker)
+        except (FileNotFoundError, ValueError) as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     ref_price = float(feat_dict.get("close", 0.0) or 0.0)
     if ref_price <= 0:
         ref_price = 100.0
-    results = model.predict_with_expected_return(
-        X,
-        price=ref_price,
-        quantity=1,
-        min_net_edge_bps=float(os.getenv("PREDICTION_MIN_EDGE_BPS", "6")),
-        slippage_bps=float(os.getenv("PREDICTION_SLIPPAGE_BPS", "2")),
-    )
-    r = results[0]
+
+    try:
+        r = mgr.predict_from_features(feat_dict, quantity=req.quantity)
+    except SchemaMismatchError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    details = r.get("details") if isinstance(r.get("details"), dict) else {}
     now = datetime.now(timezone.utc)
-    shap_features = _shap_top_features(model, X)
+    shap_features = []
+    if not req.features:
+        try:
+            from backend.prediction_engine.feature_store.feature_store import FEATURE_COLUMNS
+            import pandas as pd
+            numeric_cols = [c for c in FEATURE_COLUMNS if c not in ("ticker", "date")]
+            X = pd.DataFrame([{c: feat_dict[c] for c in numeric_cols}])
+            shap_features = _shap_top_features(model, X)
+        except Exception:
+            shap_features = []
 
     entry = PredictionEntry(
-        ticker=req.ticker,
+        ticker=ticker,
         action=ActionEnum(r["action"]),
         confidence=r["confidence"],
         expected_return=r["expected_return"],
-        model_version=model.get_version(),
-        calibration_score=r.get("calibration_score"),
+        model_version=r.get("model_version") or "unknown",
+        calibration_score=details.get("calibration_score"),
         shap_top_features=shap_features if shap_features else None,
         timestamp=now,
     )
 
     return PredictResponse(
-        ticker=req.ticker,
+        ticker=ticker,
         horizon_days=req.horizon_days,
-        predicted_price=float(feat_dict["close"]) * (1 + r["expected_return"]),
+        predicted_price=ref_price * (1 + r["expected_return"]),
         confidence=r["confidence"],
-        model_version=model.get_version(),
+        model_version=r.get("model_version") or "unknown",
         timestamp=now,
         prediction=entry,
     )
@@ -104,11 +119,10 @@ async def predict(req: PredictRequest):
 async def predict_options(req: OptionPredictRequest):
     """Option signal prediction with greeks and IV data."""
     mgr = _get_model()
-    model = mgr.model
+    _ = mgr.model
 
     from backend.prediction_engine.feature_store.feature_store import (
         get_features_for_inference,
-        FEATURE_COLUMNS,
     )
     from backend.prediction_engine.feature_store.transforms import greeks_estimate
     import pandas as pd
@@ -116,22 +130,14 @@ async def predict_options(req: OptionPredictRequest):
     try:
         feat_dict = get_features_for_inference(req.underlying)
     except (FileNotFoundError, ValueError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    numeric_cols = [c for c in FEATURE_COLUMNS if c not in ("ticker", "date")]
-    X = pd.DataFrame([{c: feat_dict[c] for c in numeric_cols}])
+    try:
+        r = mgr.predict_from_features(feat_dict, quantity=1)
+    except SchemaMismatchError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    ref_price = float(feat_dict.get("close", 0.0) or 0.0)
-    if ref_price <= 0:
-        ref_price = 100.0
-    results = model.predict_with_expected_return(
-        X,
-        price=ref_price,
-        quantity=1,
-        min_net_edge_bps=float(os.getenv("PREDICTION_MIN_EDGE_BPS", "6")),
-        slippage_bps=float(os.getenv("PREDICTION_SLIPPAGE_BPS", "2")),
-    )
-    r = results[0]
+    details = r.get("details") if isinstance(r.get("details"), dict) else {}
     now = datetime.now(timezone.utc)
 
     spot = float(feat_dict["close"])
@@ -148,15 +154,15 @@ async def predict_options(req: OptionPredictRequest):
         confidence=r["confidence"],
         expected_return=r["expected_return"],
         greeks=Greeks(**greeks_dict),
-        model_version=model.get_version(),
-        calibration_score=r.get("calibration_score"),
-        shap_top_features=_shap_top_features(model, X),
+        model_version=r.get("model_version") or "unknown",
+        calibration_score=details.get("calibration_score"),
+        shap_top_features=None,
         timestamp=now,
     )
 
     return OptionPredictResponse(
         signal=signal,
-        model_version=model.get_version(),
+        model_version=r.get("model_version") or "unknown",
         timestamp=now,
     )
 
@@ -164,15 +170,12 @@ async def predict_options(req: OptionPredictRequest):
 @router.post("/batch_predict", response_model=BatchPredictResponse)
 async def batch_predict(req: BatchPredictRequest):
     mgr = _get_model()
-    model = mgr.model
+    _ = mgr.model
 
     from backend.prediction_engine.feature_store.feature_store import (
         get_features_for_inference,
-        FEATURE_COLUMNS,
     )
-    import pandas as pd
 
-    numeric_cols = [c for c in FEATURE_COLUMNS if c not in ("ticker", "date")]
     now = datetime.now(timezone.utc)
     predictions = []
 
@@ -191,31 +194,31 @@ async def batch_predict(req: BatchPredictRequest):
             ))
             continue
 
-        X = pd.DataFrame([{c: feat_dict[c] for c in numeric_cols}])
-        ref_price = float(feat_dict.get("close", 0.0) or 0.0)
-        if ref_price <= 0:
-            ref_price = 100.0
-        results = model.predict_with_expected_return(
-            X,
-            price=ref_price,
-            quantity=1,
-            min_net_edge_bps=float(os.getenv("PREDICTION_MIN_EDGE_BPS", "6")),
-            slippage_bps=float(os.getenv("PREDICTION_SLIPPAGE_BPS", "2")),
-        )
-        r = results[0]
+        try:
+            r = mgr.predict_from_features(feat_dict, quantity=1)
+        except SchemaMismatchError:
+            predictions.append(PredictionEntry(
+                ticker=ticker,
+                action=ActionEnum.HOLD,
+                confidence=0.0,
+                expected_return=0.0,
+                model_version="schema_error",
+                timestamp=now,
+            ))
+            continue
 
         predictions.append(PredictionEntry(
             ticker=ticker,
             action=ActionEnum(r["action"]),
             confidence=r["confidence"],
             expected_return=r["expected_return"],
-            model_version=model.get_version(),
-            calibration_score=r.get("calibration_score"),
+            model_version=r.get("model_version") or "unknown",
+            calibration_score=(r.get("details") or {}).get("calibration_score"),
             timestamp=now,
         ))
 
     return BatchPredictResponse(
         predictions=predictions,
-        model_version=model.get_version(),
+        model_version=(mgr.get_model_info().get("model_version") or "unknown"),
         timestamp=now,
     )

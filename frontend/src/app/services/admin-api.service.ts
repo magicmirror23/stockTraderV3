@@ -10,7 +10,7 @@ export { ModelStatus, ModelReloadResponse, ModelVersion, DriftResult, CanaryStat
 
 interface RegistryVersionsEnvelope {
   latest: string | null;
-  versions: Array<ModelVersion & { timestamp?: string; metrics?: { test_accuracy?: number } }>;
+  versions: Array<ModelVersion & { timestamp?: string; metrics?: { test_accuracy?: number; classification_accuracy?: number; executed_trade_win_rate?: number } }>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -36,7 +36,8 @@ export class AdminApiService {
       map(res => (res.versions ?? []).map(version => ({
         version: version.version,
         created_at: version.created_at || version.timestamp || '',
-        accuracy: version.accuracy ?? version.metrics?.test_accuracy,
+        accuracy: version.accuracy ?? version.metrics?.classification_accuracy ?? version.metrics?.test_accuracy,
+        executed_trade_win_rate: version.executed_trade_win_rate ?? version.metrics?.executed_trade_win_rate,
         status: version.version === res.latest ? 'active' : 'archived'
       })))
     );

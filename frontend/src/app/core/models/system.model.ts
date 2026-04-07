@@ -5,6 +5,7 @@ export interface ModelStatus {
   status: string;
   last_trained: string | null;
   accuracy: number | null;
+  executed_trade_win_rate: number | null;
 }
 
 export interface ModelReloadResponse {
@@ -17,6 +18,7 @@ export interface ModelVersion {
   version: string;
   created_at: string;
   accuracy?: number;
+  executed_trade_win_rate?: number;
   status?: string;
 }
 

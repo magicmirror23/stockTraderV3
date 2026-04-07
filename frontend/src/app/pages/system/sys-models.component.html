@@ -11,9 +11,12 @@
       <span class="text-muted" style="font-size:0.75rem;font-weight:600">Status</span>
       <app-state-badge [label]="model.status" [variant]="statusBadge" />
     </div>
-    <app-stat-card label="Accuracy"
+    <app-stat-card label="Classification Accuracy"
       [value]="model.accuracy !== null ? (model.accuracy * 100 | number:'1.1-1') + '%' : 'N/A'"
       icon="bullseye" />
+    <app-stat-card label="Executed Trade Win Rate"
+      [value]="model.executed_trade_win_rate !== null ? (model.executed_trade_win_rate * 100 | number:'1.1-1') + '%' : 'N/A'"
+      icon="graph-up-arrow" />
     <app-stat-card label="Last Trained"
       [value]="model.last_trained ? (model.last_trained | date:'medium') ?? 'N/A' : 'N/A'"
       icon="clock-history" />

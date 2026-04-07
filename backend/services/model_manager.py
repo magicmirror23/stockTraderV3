@@ -1,21 +1,15 @@
 # Model manager logic
-"""Model manager â€“ singleton that holds the in-memory model and supports hot-reload."""
+"""Model manager singleton for inference-only serving of approved artifacts."""
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import threading
-from pathlib import Path
 
-from backend.prediction_engine.models.lightgbm_model import LightGBMModel
+from backend.ml_platform.inference_pipeline import InferencePipeline, SchemaMismatchError
 
 logger = logging.getLogger(__name__)
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-REGISTRY_PATH = REPO_ROOT / "models" / "registry.json"
-ARTIFACTS_DIR = REPO_ROOT / "models" / "artifacts"
 
 
 class ModelManager:
@@ -29,13 +23,14 @@ class ModelManager:
             with cls._lock:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
-                    cls._instance._model = None
+                    cls._instance._pipeline = InferencePipeline()
                     cls._instance._status = "not_loaded"
+                    cls._instance._active_version = None
         return cls._instance
 
     @property
-    def model(self) -> LightGBMModel | None:
-        return self._model
+    def model(self):
+        return self._pipeline.model
 
     @property
     def status(self) -> str:
@@ -53,20 +48,24 @@ class ModelManager:
         with self._lock:
             self._status = "loading"
             try:
-                registry = self._read_registry()
-                if version is None:
-                    version = registry.get("latest")
-                if not version:
-                    raise ValueError("No model version available in registry")
-
-                artifact_path = ARTIFACTS_DIR / version
-                if not artifact_path.exists():
-                    raise FileNotFoundError(f"Artifact not found: {artifact_path}")
-
-                self._model = LightGBMModel.load(artifact_path)
+                loaded = self._pipeline.load(version)
                 self._status = "loaded"
-                logger.info("Model %s loaded successfully", version)
-                return version
+                self._active_version = loaded.version
+                logger.info("Model %s loaded successfully", loaded.version)
+                return loaded.version
+            except Exception:
+                self._status = "error"
+                raise
+
+    def activate_version(self, version: str) -> str:
+        with self._lock:
+            self._status = "loading"
+            try:
+                loaded = self._pipeline.activate_version(version)
+                self._status = "loaded"
+                self._active_version = loaded.version
+                logger.info("Model %s activated", loaded.version)
+                return loaded.version
             except Exception:
                 self._status = "error"
                 raise
@@ -74,29 +73,58 @@ class ModelManager:
     def get_model_info(self) -> dict:
         """Return metadata about the currently loaded model."""
         # Auto-load latest model if none loaded yet
-        if self._model is None and self._status == "not_loaded":
+        if self.model is None and self._status == "not_loaded":
             try:
                 self.load_latest()
             except Exception:
                 pass  # no model available yet
 
-        registry = self._read_registry()
-        version = self._model.get_version() if self._model else None
-
-        # Find metrics from registry
-        metrics = {}
-        if version and registry.get("models"):
-            for entry in registry["models"]:
-                if entry["version"] == version:
-                    metrics = entry.get("metrics", {})
-                    break
+        status_payload = self._pipeline.status()
+        metrics = self._pipeline.metrics if isinstance(self._pipeline.metrics, dict) else {}
+        metadata = self._pipeline.metadata if isinstance(self._pipeline.metadata, dict) else {}
+        version = self._active_version or status_payload.get("model_version")
 
         return {
             "model_version": version or "none",
             "status": self._status,
-            "last_trained": metrics.get("timestamp"),
-            "accuracy": metrics.get("test_accuracy"),
+            "last_trained": metadata.get("created_at") or metrics.get("timestamp"),
+            "accuracy": metrics.get("classification_accuracy") or metrics.get("test_accuracy"),
+            "executed_trade_win_rate": metrics.get("executed_trade_win_rate") or metrics.get("test_precision_executed"),
+            "feature_count": status_payload.get("feature_count", 0),
+            "artifact_format": status_payload.get("artifact_format"),
+            "inference_only": _env_bool("INFERENCE_ONLY", _is_production()),
         }
+
+    def get_model_metadata(self) -> dict:
+        if self.model is None and self._status in {"not_loaded", "error"}:
+            self.load_latest()
+        return self._pipeline.model_metadata()
+
+    def predict_from_features(
+        self,
+        features: dict,
+        quantity: int = 1,
+        min_net_edge_bps: float | None = None,
+        slippage_bps: float | None = None,
+    ) -> dict:
+        """Run inference from explicit feature payload with strict schema checks."""
+        if self.model is None or self._status != "loaded":
+            self.load_latest()
+
+        return self._pipeline.predict_from_features(
+            features,
+            quantity=quantity,
+            min_net_edge_bps=(
+                float(min_net_edge_bps)
+                if min_net_edge_bps is not None
+                else float(os.getenv("PREDICTION_MIN_EDGE_BPS", "6"))
+            ),
+            slippage_bps=(
+                float(slippage_bps)
+                if slippage_bps is not None
+                else float(os.getenv("PREDICTION_SLIPPAGE_BPS", "2"))
+            ),
+        )
 
     def predict(self, ticker: str, horizon_days: int = 1) -> dict | None:
         """Run a full prediction pipeline for a ticker.
@@ -105,7 +133,7 @@ class ModelManager:
         model_version, calibration_score.  Returns None on failure.
         """
         # Auto-load latest model if none loaded
-        if self._model is None or self._status != "loaded":
+        if self.model is None or self._status != "loaded":
             try:
                 self.load_latest()
             except Exception:
@@ -113,15 +141,9 @@ class ModelManager:
                 return None
 
         try:
-            import pandas as pd
-            from backend.prediction_engine.feature_store.feature_store import (
-                get_features_for_inference,
-                FEATURE_COLUMNS,
-            )
+            from backend.prediction_engine.feature_store.feature_store import get_features_for_inference
 
             feat_dict = get_features_for_inference(ticker)
-            numeric_cols = [c for c in FEATURE_COLUMNS if c not in ("ticker", "date")]
-            X = pd.DataFrame([{c: feat_dict[c] for c in numeric_cols}])
 
             close_price = float(feat_dict.get("close", 0.0) or 0.0)
             if close_price <= 0:
@@ -131,41 +153,40 @@ class ModelManager:
             reference_position_pct = float(os.getenv("PREDICTION_REFERENCE_POSITION_PCT", "0.10"))
             reference_qty = max(1, int((reference_capital * reference_position_pct) / close_price))
 
-            results = self._model.predict_with_expected_return(
-                X,
-                price=close_price,
-                quantity=reference_qty,
-                min_net_edge_bps=float(os.getenv("PREDICTION_MIN_EDGE_BPS", "6")),
-                slippage_bps=float(os.getenv("PREDICTION_SLIPPAGE_BPS", "2")),
-            )
-            if not results:
-                return None
-
-            r = results[0]
+            r = self.predict_from_features(feat_dict, quantity=reference_qty)
+            details = r.get("details") if isinstance(r.get("details"), dict) else {}
             predicted_price = close_price * (1 + r["expected_return"])
             return {
                 "action": r["action"],
                 "confidence": r["confidence"],
                 "expected_return": r["expected_return"],
                 "net_expected_return": r.get("net_expected_return"),
-                "trade_edge": r.get("trade_edge"),
-                "buy_threshold": r.get("buy_threshold"),
-                "sell_threshold": r.get("sell_threshold"),
-                "no_trade_reason": r.get("no_trade_reason"),
+                "trade_edge": details.get("trade_edge"),
+                "buy_threshold": details.get("buy_threshold"),
+                "sell_threshold": details.get("sell_threshold"),
+                "no_trade_reason": details.get("no_trade_reason"),
                 "predicted_price": predicted_price,
                 "reference_price": close_price,
                 "reference_quantity": reference_qty,
                 "atr_14": float(feat_dict.get("atr_14", 0.0) or 0.0),
                 "volatility_20": float(feat_dict.get("volatility_20", 0.0) or 0.0),
-                "model_version": self._model.get_version(),
-                "calibration_score": r.get("calibration_score"),
+                "model_version": r.get("model_version") or self._active_version,
+                "calibration_score": details.get("calibration_score"),
             }
+        except SchemaMismatchError as exc:
+            logger.warning("Schema mismatch for %s: %s", ticker, exc)
+            return None
         except Exception as exc:
             logger.warning("Prediction failed for %s: %s", ticker, exc)
             return None
 
-    @staticmethod
-    def _read_registry() -> dict:
-        if REGISTRY_PATH.exists():
-            return json.loads(REGISTRY_PATH.read_text())
-        return {"models": [], "latest": None}
+
+def _is_production() -> bool:
+    return os.getenv("APP_ENV", "").strip().lower() in {"production", "prod"}
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
