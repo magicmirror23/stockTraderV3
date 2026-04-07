@@ -39,25 +39,13 @@ services:
       - key: LOG_LEVEL
         value: INFO
       - key: MARKET_DATA_URL
-        fromService:
-          name: stocktrader-market-data-lyh3
-          type: web
-          property: hostport
+        value: "https://stocktrader-market-data-lyh3.onrender.com"
       - key: PREDICTION_URL
-        fromService:
-          name: stocktrader-prediction-lyh3
-          type: web
-          property: hostport
+        value: "https://stocktrader-prediction-lyh3.onrender.com"
       - key: TRADING_URL
-        fromService:
-          name: stocktrader-trading-lyh3
-          type: web
-          property: hostport
+        value: "https://stocktrader-trading-lyh3.onrender.com"
       - key: ADMIN_URL
-        fromService:
-          name: stocktrader-admin-lyh3
-          type: web
-          property: hostport
+        value: "https://stocktrader-admin-lyh3.onrender.com"
       - key: DATABASE_URL
         fromDatabase:
           name: stocktrader-db-lyh3
@@ -405,10 +393,7 @@ services:
       - key: MODEL_SYNC_TOKEN
         value: stocktrader-sync-v1
       - key: PREDICTION_URL
-        fromService:
-          name: stocktrader-prediction-lyh3
-          type: web
-          property: hostport
+        value: "https://stocktrader-prediction-lyh3.onrender.com"
       - key: TRAIN_DOWNLOAD_PROVIDER_RETRIES
         value: "2"
       - key: TRAIN_DOWNLOAD_OUTER_RETRIES
