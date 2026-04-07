@@ -289,7 +289,6 @@ def _add_cross_sectional_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # Beta to benchmark (rolling 63-day covariance / variance)
     def _rolling_beta(group):
-        dates = group["date"].values
         ret = group["return_1d"].values
         bm = group["_benchmark_1d"].values
         betas = np.full(len(ret), np.nan)
