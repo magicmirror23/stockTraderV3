@@ -306,7 +306,7 @@ def _add_cross_sectional_features(df: pd.DataFrame) -> pd.DataFrame:
         return pd.Series(betas, index=group.index)
 
     df["_benchmark_1d"] = benchmark_1d
-    df["beta_to_benchmark"] = df.groupby("ticker", group_keys=False).apply(_rolling_beta, include_groups=False)
+    df["beta_to_benchmark"] = df.groupby("ticker", group_keys=False).apply(_rolling_beta)
 
     # Rolling correlation to benchmark (20-day)
     def _rolling_corr(group):
@@ -325,7 +325,7 @@ def _add_cross_sectional_features(df: pd.DataFrame) -> pd.DataFrame:
                 corrs[i] = cc[0, 1]
         return pd.Series(corrs, index=group.index)
 
-    df["rolling_corr_to_benchmark"] = df.groupby("ticker", group_keys=False).apply(_rolling_corr, include_groups=False)
+    df["rolling_corr_to_benchmark"] = df.groupby("ticker", group_keys=False).apply(_rolling_corr)
 
     # Cleanup temp columns
     df.drop(columns=["_sector", "_return_20d", "_benchmark_1d"], inplace=True, errors="ignore")
